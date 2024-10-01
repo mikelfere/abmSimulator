@@ -17,7 +17,7 @@ void freeSequence(Sequence* sequence) {
 }
 
 void writeSequence(Sequence* sequence, uint8_t byte, int line) {
-    if (sequence->capacity < sequence->code + 1) {
+    if (sequence->capacity < sequence->count + 1) {
         int prevCapacity = sequence->capacity;
         sequence->capacity = prevCapacity < 16 ? 16 : prevCapacity * 2;
         sequence->code = (uint8_t*)reallocate((void*)sequence->code, \
