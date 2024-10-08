@@ -1,4 +1,4 @@
-#include "memory.h"
+#include "memmng.h"
 #include "sequence.h"
 
 void initSequence(Sequence* sequence) {
@@ -6,13 +6,13 @@ void initSequence(Sequence* sequence) {
     sequence->capacity = 0;
     sequence->code = NULL;
     sequence->lines = NULL;
-    initLiteralArray(&sequence->constants);
+    initValueArray(&sequence->constants);
 }
 
 void freeSequence(Sequence* sequence) {
     reallocate(sequence->code, sizeof(uint8_t) * sequence->capacity, 0);
     reallocate(sequence->lines, sizeof(int) * sequence->capacity, 0);
-    freeLiteralArray(&sequence->constants);
+    freeValueArray(&sequence->constants);
     initSequence(sequence);
 }
 
@@ -32,7 +32,7 @@ void writeSequence(Sequence* sequence, uint8_t byte, int line) {
     sequence->count++;
 }
 
-int addLiteral(Sequence* sequence, Literal literal){
-    writeLiteralArray(&sequence->constants, literal);
+int addValue(Sequence* sequence, Value value){
+    writeValueArray(&sequence->constants, value);
     return sequence->constants.count - 1;
 }

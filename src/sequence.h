@@ -3,23 +3,55 @@
 
 #include <stdint.h>
 
-#include "literal.h"
+#include "value.h"
 
 typedef enum {
-    OP_CONSTANT,
+    OP_LVALUE,
+    OP_RVALUE,
+    OP_PUSH,
+    OP_POP,
     OP_ADD,
     OP_SUBTRACT,
     OP_MULTIPLY,
     OP_DIVIDE,
     OP_REMAINDER,
+    OP_EQUAL,
+    OP_NOT_EQUAL,
+    OP_GREATER,
+    OP_LESS,
+    OP_LESS_EQUAL,
+    OP_GREATER_EQUAL,
+    OP_AND,
+    OP_OR,
+    OP_NOT,
+    OP_PRINT,
+    OP_SHOW,
+    OP_COPY,
+    OP_ASSIGN,
+    OP_JUMP,
+    OP_JUMP_IF_FALSE,
+    OP_JUMP_IF_TRUE,
+    OP_FUNCTION,
+    OP_CALL,
+    OP_RETURN,
+    OP_BEGIN,
+    OP_END,
     OP_HALT,
 } OpCode;
 
+/**
+ * struct Sequence - A sequence of byte OpCodes
+ * @a: count -> int : current number of bytes
+ * @b: capacity -> int : maximum number of bytes
+ * @c: code -> uint8_t* : array of bytes
+ * @d: constants -> ValueArray : stores all constants of current sequence
+ * @e: line -> int* : stores line for each byte
+ */
 typedef struct {
     int count;
     int capacity;
     uint8_t* code;
-    LiteralArray constants;
+    ValueArray constants;
     int* lines;
 } Sequence;
 
@@ -49,14 +81,14 @@ void freeSequence(Sequence* sequence);
 void writeSequence(Sequence* sequence, uint8_t byte, int line);
 
 /**
- * @brief Making use of writeLiteralArray(), add given literal to
- * the literals array contained in the given sequence. Return index
- * where literal was added.
+ * @brief Making use of writeValueArray(), add given value to
+ * the values array contained in the given sequence. Return index
+ * where value was added.
  * 
  * @param sequence 
- * @param literal 
+ * @param value 
  * @return int 
  */
-int addLiteral(Sequence* sequence, Literal literal);
+int addValue(Sequence* sequence, Value value);
 
 #endif
