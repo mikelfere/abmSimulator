@@ -2,7 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "scanner.h"
+#include "vm.h"
+
+NameList functionNames;
+
 static char* readFile(const char* filePath) {
+    // printf("readFile\n");
     FILE* file = fopen(filePath, "rb");
     if (file == NULL) {
         printf("Error - Could not open file.");
@@ -17,7 +23,7 @@ static char* readFile(const char* filePath) {
 
     char* source = (char*)malloc(fileSize + 1);
 
-    size_t charsRead = fread(source, sizeof(char), file, file);
+    size_t charsRead = fread(source, sizeof(char), fileSize, file);
     if (charsRead < fileSize) {
         printf("Error - Could not read file.");
         exit(2);
@@ -33,14 +39,26 @@ static char* readFile(const char* filePath) {
 
 static void runFile(const char* filePath) {
     char* source = readFile(filePath);
-    // to be implemented
+    getFunctionNames(&functionNames, source);
+    InterpretResult result = interpret(source);
+    free(source);
+    if (result == INTERPRET_COMPILE_ERROR) {
+        exit(3);
+    }
+    if (result == INTERPRET_RUNTIME_ERROR) {
+        exit(4);
+    }
+    
 }
 
 int main(int argc, char* argv[]) {
+    initNameList(&functionNames);
+    initVM();
     if (argc == 2) {
         runFile(argv[1]);
     } else {
         printf("Usage: abm [path]\n");
     }
+    freeVM();
     return 0;
 }
