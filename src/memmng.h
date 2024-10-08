@@ -1,5 +1,5 @@
-#ifndef memory_h
-#define memory_h
+#ifndef memmng_h
+#define memmng_h
 
 #include <stddef.h>
 
@@ -14,5 +14,12 @@
  * @return void* 
  */
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
+
+/**
+ * @brief Frees all Object objects in vm. Traverses through the linked
+ * list of objects and depending on the type, frees and resets all
+ * members of the object.
+ */
+void freeObjects();
 
 #endif
