@@ -44,9 +44,9 @@ void removeName(NameList* list, const char* name, int length) {
     }
 }
 
-void printNames(NameList* list) {
-    for (int i = 0; i < list->count; i++) {
-        printf("%s\n", list->names[i]);
-    }
-    // printf("%d\n",list->returnCount);
-}
+// void printNames(NameList* list) {
+//     for (int i = 0; i < list->count; i++) {
+//         printf("%s\n", list->names[i]);
+//     }
+//     // printf("%d\n",list->returnCount);
+// }

@@ -32,7 +32,7 @@ void writeSequence(Sequence* sequence, uint8_t byte, int line) {
     sequence->count++;
 }
 
-int addValue(Sequence* sequence, Value value){
+int addValue(Sequence* sequence, Value value) {
     writeValueArray(&sequence->constants, value);
     return sequence->constants.count - 1;
 }

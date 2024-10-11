@@ -12,7 +12,7 @@ static char* readFile(const char* filePath) {
     FILE* file = fopen(filePath, "rb");
     if (file == NULL) {
         printf("Error - Could not open file.");
-        exit(2);
+        exit(1);
     }
 
     // Get the file pointer to the end of file
@@ -43,10 +43,10 @@ static void runFile(const char* filePath) {
     InterpretResult result = interpret(source);
     free(source);
     if (result == INTERPRET_COMPILE_ERROR) {
-        exit(3);
+        exit(1);
     }
     if (result == INTERPRET_RUNTIME_ERROR) {
-        exit(4);
+        exit(1);
     }
     
 }

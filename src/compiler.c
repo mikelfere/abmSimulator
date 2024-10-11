@@ -15,11 +15,6 @@ static Sequence* currentSequence() {
 }
 
 static void errorAt(Token* token, const char* message) {
-    if (parser.panicMode) {
-        return;
-    }
-
-    parser.panicMode = true;
     printf("--line %d-- Error", token->line);
 
     if (token->type == TOKEN_EOF) {
@@ -73,13 +68,13 @@ static bool matchToken(TokenType type) {
     return true;
 }
 
-static void emitByte(uint8_t byte) {
+static void writeByte(uint8_t byte) {
     writeSequence(currentSequence(), byte, parser.previous.line);
 }
 
-static void emitBytes(uint8_t byte1, uint8_t byte2) {
-    emitByte(byte1);
-    emitByte(byte2);
+static void writeBytes(uint8_t byte1, uint8_t byte2) {
+    writeByte(byte1);
+    writeByte(byte2);
 }
 
 static uint8_t makeConstant(Value value) {
@@ -92,7 +87,7 @@ static uint8_t makeConstant(Value value) {
 }
 
 static void initCompiler(Compiler* compiler, FunctionType type) {
-    compiler->enclosing = currentCompiler;
+    compiler->previousCompiler = currentCompiler;
     compiler->function = NULL;
     compiler->type = type;
     compiler->function = newFunction();
@@ -105,7 +100,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
 
 static FunctionObject* endCompiler() {
     FunctionObject* function = currentCompiler->function;
-    currentCompiler = currentCompiler->enclosing;
+    currentCompiler = currentCompiler->previousCompiler;
     return function;
 }
 
@@ -114,103 +109,103 @@ static void declaration();
 static void statement() {
     // printf("statement\n");
     if (matchToken(TOKEN_PUSH)) {
-        emitByte(OP_PUSH);
+        writeByte(OP_PUSH);
         consumeToken(TOKEN_NUMBER, "Expected a number.");
         int num = atoi(parser.previous.start);
         uint8_t index = makeConstant((Value){NUM_VALUE, {.number = num}});
-        emitByte(index);
+        writeByte(index);
         // printf("After push\n");
     } else if (matchToken(TOKEN_POP)) {
-        emitByte(OP_POP);
+        writeByte(OP_POP);
         // printf("After pop\n");
     } else if (matchToken(TOKEN_SHOW)) {
         consumeToken(TOKEN_STRING, "Expected a string.");
         Token* name = &parser.previous; 
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
-        emitBytes(OP_SHOW, index);
+        writeBytes(OP_SHOW, index);
         // printf("After show\n");
     } else if (matchToken(TOKEN_COPY)) {
-        emitByte(OP_COPY);
+        writeByte(OP_COPY);
         // printf("After copy\n");
     } else if (matchToken(TOKEN_ASSIGN)) {
-        emitByte(OP_ASSIGN);
+        writeByte(OP_ASSIGN);
         // printf("After assign\n");
     } else if (matchToken(TOKEN_HALT)) {
-        emitByte(OP_HALT);
+        writeByte(OP_HALT);
         // printf("After halt\n");
     } else if (matchToken(TOKEN_PLUS)) {
-        emitByte(OP_ADD);
+        writeByte(OP_ADD);
         // printf("After add\n");
     } else if (matchToken(TOKEN_MINUS)) {
-        emitByte(OP_SUBTRACT);
+        writeByte(OP_SUBTRACT);
         // printf("After subtract\n");
     } else if (matchToken(TOKEN_STAR)) {
-        emitByte(OP_MULTIPLY);
+        writeByte(OP_MULTIPLY);
         // printf("After multiply\n");
     } else if (matchToken(TOKEN_SLASH)) {
-        emitByte(OP_DIVIDE);
+        writeByte(OP_DIVIDE);
         // printf("After divide\n");
     } else if (matchToken(TOKEN_DIV)) {
-        emitByte(OP_REMAINDER);
+        writeByte(OP_REMAINDER);
         // printf("After remainder\n");
     } else if (matchToken(TOKEN_AMPERSAND)) {
-        emitByte(OP_AND);
+        writeByte(OP_AND);
         // printf("After and\n");
     } else if (matchToken(TOKEN_VERTICAL_LINE)) {
-        emitByte(OP_OR);
+        writeByte(OP_OR);
         // printf("After or\n");
     } else if (matchToken(TOKEN_EXCALMATION)) {
-        emitByte(OP_NOT);
+        writeByte(OP_NOT);
         // printf("After not\n");
     } else if (matchToken(TOKEN_NOT_EQUAL)) {
-        emitByte(OP_NOT_EQUAL);
+        writeByte(OP_NOT_EQUAL);
         // printf("After not equal\n");
     } else if (matchToken(TOKEN_EQUAL)) {
-        emitByte(OP_EQUAL);
+        writeByte(OP_EQUAL);
         // printf("After equal\n");
     } else if (matchToken(TOKEN_LESS_EQUAL)) {
-        emitByte(OP_LESS_EQUAL);
+        writeByte(OP_LESS_EQUAL);
         // printf("After less equal\n");
     } else if (matchToken(TOKEN_GREATER_EQUAL)) {
-        emitByte(OP_GREATER_EQUAL);
+        writeByte(OP_GREATER_EQUAL);
         // printf("After greater equal\n");
     } else if (matchToken(TOKEN_LESS)) {
-        emitByte(OP_LESS);
+        writeByte(OP_LESS);
         // printf("After less\n");
     } else if (matchToken(TOKEN_GREATER)) {
-        emitByte(OP_GREATER);
+        writeByte(OP_GREATER);
         // printf("After greater\n");
     } else if (matchToken(TOKEN_PRINT)) {
-        emitByte(OP_PRINT);
+        writeByte(OP_PRINT);
         // printf("After print\n");
     } else if (matchToken(TOKEN_CALL)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = & parser.previous;
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
-        emitBytes(OP_CALL, index);
+        writeBytes(OP_CALL, index);
         // printf("After call\n");
     } else if (matchToken(TOKEN_RETURN)) {
-        emitByte(OP_RETURN);
+        writeByte(OP_RETURN);
         // printf("After return\n");
     } else if (matchToken(TOKEN_LVALUE)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
-        emitBytes(OP_LVALUE, index);
+        writeBytes(OP_LVALUE, index);
         // printf("After lvalue\n");
     } else if (matchToken(TOKEN_RVALUE)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
-        emitBytes(OP_RVALUE, index);
+        writeBytes(OP_RVALUE, index);
         // printf("After rvalue\n");
     } else if (matchToken(TOKEN_GOTO)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
-        emitBytes(OP_JUMP, index);
+        writeBytes(OP_JUMP, index);
         int jumpPoint = currentSequence()->count - 1;
-        emitBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
+        writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
         if (isInNameList(&currentCompiler->labelList, name->start, name->length)) {
             removeName(&currentCompiler->labelList, name->start, name->length);
         } else {
@@ -221,9 +216,9 @@ static void statement() {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
-        emitBytes(OP_JUMP_IF_FALSE, index);
+        writeBytes(OP_JUMP_IF_FALSE, index);
         int jumpPoint = currentSequence()->count - 1;
-        emitBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
+        writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
         if (isInNameList(&currentCompiler->labelList, name->start, name->length)) {
             removeName(&currentCompiler->labelList, name->start, name->length);
         } else {
@@ -234,9 +229,9 @@ static void statement() {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
-        emitBytes(OP_JUMP_IF_TRUE, index);
+        writeBytes(OP_JUMP_IF_TRUE, index);
         int jumpPoint = currentSequence()->count - 1;
-        emitBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
+        writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
         if (isInNameList(&currentCompiler->labelList, name->start, name->length)) {
             removeName(&currentCompiler->labelList, name->start, name->length);
         } else {
@@ -244,10 +239,10 @@ static void statement() {
         }
         // printf("After gotrue\n");
     } else if (matchToken(TOKEN_BEGIN)) {
-        emitByte(OP_BEGIN);
+        writeByte(OP_BEGIN);
         // printf("After begin\n");
     } else if (matchToken(TOKEN_END)) {
-        emitByte(OP_END);
+        writeByte(OP_END);
         // printf("After end\n");
     }
 }
@@ -268,7 +263,7 @@ static FunctionObject* compileFunction(FunctionType type) {
         }
     }
     consumeToken(TOKEN_RETURN, "Expected a return before end of function.");
-    emitByte(OP_RETURN);
+    writeByte(OP_RETURN);
     // printf("ended function compiler\n");
     return endCompiler();
 }
@@ -314,7 +309,6 @@ FunctionObject* compile(const char* source) {
     initCompiler(&compiler, TYPE_DEFAULT);
 
     parser.hadError = false;
-    parser.panicMode = false;
 
     advanceParser();
     while (!matchToken(TOKEN_EOF)) {

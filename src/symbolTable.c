@@ -25,15 +25,7 @@ static Entry* findEntry(Entry* entries, int capacity, String* key) {
     Entry* tombstone = NULL;
     for (;;) {
         Entry* entry = &entries[index];
-        if (entry->key == NULL) {
-            if (entry->value.as.number == 0) {
-                return tombstone != NULL ? tombstone : entry;
-            } else {
-                if (tombstone == NULL) {
-                    tombstone = entry;
-                }
-            }
-        } else if (entry->key == key) {
+        if (entry->key  == key || entry->key == NULL) {
             return entry;
         }
         index = (index + 1) % capacity;
@@ -94,30 +86,6 @@ bool tableSet(Table* table, String* key, Value value) {
     return isNewKey;
 }
 
-bool deleteEntry(Table* table, String* key) {
-    if (table->count == 0) {
-        return false;
-    }
-
-    Entry* entry = findEntry(table->entries, table->capacity, key);
-    if (entry->key == NULL) {
-        return false;
-    }
-
-    entry->key = NULL;
-    entry->value = (Value){NUM_VALUE, {INT_MIN}};
-    return true;
-}
-
-void tableCopyEntries(Table* from, Table* to) {
-    for (int i = 0; i < from->capacity; i++) {
-        Entry* entry = &from->entries[i];
-        if (entry->key != NULL) {
-            tableSet(to, entry->key, entry->value);
-        }
-    }   
-}
-
 String* findString(Table* table, const char* characters, int length, \
                     uint32_t hash) {
     if (table->count == 0) {
@@ -128,9 +96,7 @@ String* findString(Table* table, const char* characters, int length, \
     for (;;) {
         Entry* entry = &table->entries[index];
         if (entry->key == NULL) {
-            if (entry->value.as.number == 0) {
-                return NULL;
-            }
+            return NULL;
         } else if (entry->key->length == length && 
                     entry->key->hash == hash && 
                     memcmp(entry->key->characaters, characters, length) == 0) {
