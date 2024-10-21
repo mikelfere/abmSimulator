@@ -31,12 +31,14 @@ typedef struct {
  * @b: function -> FunctionObject* : function to be returned when compilation is done, all OpCodes are stored here
  * @c: type -> FunctionType : checks if we are inside a user defined function
  * @d: labelList -> NameList : stores all names of labels inside a function
+ * @e: encounteredLabel -> bool[] : keeps track if any label stored in labelList is encountered at least twice
  */
 typedef struct Compiler {
     struct Compiler* previousCompiler;
     FunctionObject* function;
     FunctionType type;
     NameList labelList;
+    bool encounteredLabel[256];
 } Compiler;
 
 FunctionObject* compile(const char* source);

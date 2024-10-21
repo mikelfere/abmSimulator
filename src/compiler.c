@@ -206,8 +206,9 @@ static void statement() {
         writeBytes(OP_JUMP, index);
         int jumpPoint = currentSequence()->count - 1;
         writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
-        if (isInNameList(&currentCompiler->labelList, name->start, name->length)) {
-            removeName(&currentCompiler->labelList, name->start, name->length);
+        int labelIndex = getNameIndex(&currentCompiler->labelList, name->start, name->length);
+        if (labelIndex != -1) {
+            currentCompiler->encounteredLabel[labelIndex] = true;
         } else {
             addName(&currentCompiler->labelList, name->start, name->length);
         }
@@ -219,8 +220,9 @@ static void statement() {
         writeBytes(OP_JUMP_IF_FALSE, index);
         int jumpPoint = currentSequence()->count - 1;
         writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
-        if (isInNameList(&currentCompiler->labelList, name->start, name->length)) {
-            removeName(&currentCompiler->labelList, name->start, name->length);
+        int labelIndex = getNameIndex(&currentCompiler->labelList, name->start, name->length);
+        if (labelIndex != -1) {
+            currentCompiler->encounteredLabel[labelIndex] = true;
         } else {
             addName(&currentCompiler->labelList, name->start, name->length);
         }
@@ -232,8 +234,9 @@ static void statement() {
         writeBytes(OP_JUMP_IF_TRUE, index);
         int jumpPoint = currentSequence()->count - 1;
         writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
-        if (isInNameList(&currentCompiler->labelList, name->start, name->length)) {
-            removeName(&currentCompiler->labelList, name->start, name->length);
+        int labelIndex = getNameIndex(&currentCompiler->labelList, name->start, name->length);
+        if (labelIndex != -1) {
+            currentCompiler->encounteredLabel[labelIndex] = true;
         } else {
             addName(&currentCompiler->labelList, name->start, name->length);
         }
@@ -247,6 +250,15 @@ static void statement() {
     }
 }
 
+static bool encounteredAllLabels() {
+    for (int i = 0; i < currentCompiler->labelList.count; i++) {
+        if (!currentCompiler->encounteredLabel[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static FunctionObject* compileFunction(FunctionType type) {
     Compiler compiler;
     // printf("init function Compiler\n");
@@ -255,7 +267,7 @@ static FunctionObject* compileFunction(FunctionType type) {
         declaration();
 
         if (checkToken(TOKEN_RETURN)) {
-            if (currentCompiler->labelList.removedCount == currentCompiler->labelList.count) {
+            if (encounteredAllLabels()) {
                 break;
             }
         } else if (checkToken(TOKEN_EOF)) {
@@ -286,8 +298,9 @@ static void declaration() {
             tableSet(&currentCompiler->function->labels, key, fun);
         } else {
             // printf("New Label\n");
-            if (isInNameList(&currentCompiler->labelList, name->start, name->length)) {
-                removeName(&currentCompiler->labelList, name->start, name->length);
+            int labelIndex = getNameIndex(&currentCompiler->labelList, name->start, name->length);
+            if (labelIndex != -1) {
+                currentCompiler->encounteredLabel[labelIndex] = true;
             } else {
                 addName(&currentCompiler->labelList, name->start, name->length);
             }
