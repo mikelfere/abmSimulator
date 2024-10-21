@@ -5,14 +5,12 @@
  * struct NameList
  * @a: capacity -> int : stores capacity of list
  * @b: count -> int : stores number of elements
- * @c: removedCount -> int : stores number of deleted elements
- * @d: length -> int[256] : stores length of every string in names
- * @e: names -> char[256][256] : array of strings (names)
+ * @c: length -> int[256] : stores length of every string in names
+ * @d: names -> char[256][256] : array of strings (names)
  */
 typedef struct{
     int capacity;
     int count;
-    int removedCount;
     int length[256];
     char names[256][256];
 } NameList;
@@ -52,5 +50,15 @@ void removeName(NameList* list, const char* name, int length);
  * @return false 
  */
 bool isInNameList(NameList* list, const char* name, int length);
+
+/**
+ * @brief Get the index of name if stored in list, else -1
+ * 
+ * @param list 
+ * @param name 
+ * @param length 
+ * @return int 
+ */
+int getNameIndex(NameList* list, const char* name, int length);
 // void printNames(NameList* list);
 #endif
