@@ -37,10 +37,11 @@ static char* readFile(const char* filePath) {
     return source;
 }
 
-static void runFile(const char* filePath) {
+static void runFile(VM* vm, const char* filePath) {
+    printf("in runFile\n");
     char* source = readFile(filePath);
     getFunctionNames(&functionNames, source);
-    InterpretResult result = interpret(source);
+    InterpretResult result = interpret(vm, source);
     free(source);
     if (result == INTERPRET_COMPILE_ERROR) {
         exit(1);
@@ -52,13 +53,16 @@ static void runFile(const char* filePath) {
 }
 
 int main(int argc, char* argv[]) {
+    printf("in main\n");
     initNameList(&functionNames);
-    initVM();
+    VM vm;
+    initVM(&vm);
+    printf("after initVM\n");
     if (argc == 2) {
-        runFile(argv[1]);
+        runFile(&vm, argv[1]);
     } else {
         printf("Usage: abm [path]\n");
     }
-    freeVM();
+    freeVM(&vm);
     return 0;
 }

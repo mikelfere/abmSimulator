@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "vm.h"
+
 /**
  * @brief Using the C standard realloc() function, reallocate the given
  * array to the specified new size. If new size is 0, then free the
@@ -19,7 +21,9 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize);
  * @brief Frees all Object objects in vm. Traverses through the linked
  * list of objects and depending on the type, frees and resets all
  * members of the object.
+ * 
+ * @param vm
  */
-void freeObjects();
+void freeObjects(VM* vm);
 
 #endif

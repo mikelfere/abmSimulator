@@ -41,6 +41,13 @@ typedef struct Compiler {
     bool encounteredLabel[256];
 } Compiler;
 
-FunctionObject* compile(const char* source);
+/**
+ * @brief 
+ * 
+ * @param vm 
+ * @param source 
+ * @return FunctionObject* 
+ */
+FunctionObject* compile(VM* vm, const char* source);
 
 #endif

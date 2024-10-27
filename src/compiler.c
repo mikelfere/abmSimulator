@@ -86,14 +86,14 @@ static uint8_t makeConstant(Value value) {
     return (uint8_t)index;
 }
 
-static void initCompiler(Compiler* compiler, FunctionType type) {
+static void initCompiler(VM* vm, Compiler* compiler, FunctionType type) {
     compiler->previousCompiler = currentCompiler;
     compiler->function = NULL;
     compiler->type = type;
-    compiler->function = newFunction();
+    compiler->function = newFunction(vm);
     currentCompiler = compiler;
     if (type != TYPE_DEFAULT) {
-        currentCompiler->function->name = copyString(parser.previous.start, parser.previous.length);
+        currentCompiler->function->name = copyString(vm, parser.previous.start, parser.previous.length);
     }
     initNameList(&currentCompiler->labelList);
 }
@@ -106,7 +106,7 @@ static FunctionObject* endCompiler() {
 
 static void declaration();
 
-static void statement() {
+static void statement(VM* vm) {
     // printf("statement\n");
     if (matchToken(TOKEN_PUSH)) {
         writeByte(OP_PUSH);
@@ -121,7 +121,7 @@ static void statement() {
     } else if (matchToken(TOKEN_SHOW)) {
         consumeToken(TOKEN_STRING, "Expected a string.");
         Token* name = &parser.previous; 
-        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
+        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(vm, name->start, name->length)}});
         writeBytes(OP_SHOW, index);
         // printf("After show\n");
     } else if (matchToken(TOKEN_COPY)) {
@@ -181,7 +181,7 @@ static void statement() {
     } else if (matchToken(TOKEN_CALL)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = & parser.previous;
-        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
+        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(vm, name->start, name->length)}});
         writeBytes(OP_CALL, index);
         // printf("After call\n");
     } else if (matchToken(TOKEN_RETURN)) {
@@ -190,19 +190,19 @@ static void statement() {
     } else if (matchToken(TOKEN_LVALUE)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
-        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
+        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(vm, name->start, name->length)}});
         writeBytes(OP_LVALUE, index);
         // printf("After lvalue\n");
     } else if (matchToken(TOKEN_RVALUE)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
-        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
+        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(vm, name->start, name->length)}});
         writeBytes(OP_RVALUE, index);
         // printf("After rvalue\n");
     } else if (matchToken(TOKEN_GOTO)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
-        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
+        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(vm, name->start, name->length)}});
         writeBytes(OP_JUMP, index);
         int jumpPoint = currentSequence()->count - 1;
         writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
@@ -216,7 +216,7 @@ static void statement() {
     } else if (matchToken(TOKEN_GOFALSE)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
-        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
+        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(vm, name->start, name->length)}});
         writeBytes(OP_JUMP_IF_FALSE, index);
         int jumpPoint = currentSequence()->count - 1;
         writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
@@ -230,7 +230,7 @@ static void statement() {
     } else if (matchToken(TOKEN_GOTRUE)) {
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
-        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(name->start, name->length)}});
+        uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)copyString(vm, name->start, name->length)}});
         writeBytes(OP_JUMP_IF_TRUE, index);
         int jumpPoint = currentSequence()->count - 1;
         writeBytes(((jumpPoint >> 8) & 0xff), (jumpPoint & 0xff));
@@ -259,12 +259,12 @@ static bool encounteredAllLabels() {
     return true;
 }
 
-static FunctionObject* compileFunction(FunctionType type) {
+static FunctionObject* compileFunction(VM* vm, FunctionType type) {
     Compiler compiler;
     // printf("init function Compiler\n");
-    initCompiler(&compiler, type);
+    initCompiler(vm, &compiler, type);
     for (;;) {
-        declaration();
+        declaration(vm);
 
         if (checkToken(TOKEN_RETURN)) {
             if (encounteredAllLabels()) {
@@ -280,17 +280,17 @@ static FunctionObject* compileFunction(FunctionType type) {
     return endCompiler();
 }
 
-static void declaration() {
+static void declaration(VM* vm) {
     // printf("declaration\n");
     if(matchToken(TOKEN_LABEL)){
         // printf("In label\n");
         consumeToken(TOKEN_IDENTIFIER, "Expected a name.");
         Token* name = &parser.previous;
-        String* key = copyString(name->start, name->length);
+        String* key = copyString(vm, name->start, name->length);
         uint8_t index = makeConstant((Value){OBJ_VALUE, {.obj = (Object*)key}});
         if (isInNameList(&functionNames, name->start, name->length)) {
             // printf("New function\n");
-            FunctionObject* function = compileFunction(TYPE_FUNCTION);
+            FunctionObject* function = compileFunction(vm, TYPE_FUNCTION);
             Value fun = (Value){OBJ_VALUE, {.obj = (Object*) function}};
             if (tableGet(&currentCompiler->function->labels, key, &fun)) {
                 error("Function already defined.");
@@ -312,20 +312,20 @@ static void declaration() {
         }
         // printf("After label\n");
     } else {
-        statement();
+        statement(vm);
     }
 }
 
-FunctionObject* compile(const char* source) {
+FunctionObject* compile(VM* vm, const char* source) {
     initScanner(source);
     Compiler compiler;
-    initCompiler(&compiler, TYPE_DEFAULT);
+    initCompiler(vm, &compiler, TYPE_DEFAULT);
 
     parser.hadError = false;
 
     advanceParser();
     while (!matchToken(TOKEN_EOF)) {
-        declaration();
+        declaration(vm);
     }
     
     FunctionObject* function = endCompiler();

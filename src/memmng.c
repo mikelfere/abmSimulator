@@ -4,7 +4,6 @@
 #include "memmng.h"
 #include "object.h"
 #include "value.h"
-#include "vm.h"
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
     if (newSize == 0) {
@@ -31,8 +30,8 @@ static void freeObject(Object* obj) {
     }
 }
 
-void freeObjects() {
-    Object* obj = vm.objects;
+void freeObjects(VM* vm) {
+    Object* obj = vm->objects;
     while (obj != NULL) {
         Object* next = obj->next;
         freeObject(obj);

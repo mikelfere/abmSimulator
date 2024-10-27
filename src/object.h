@@ -7,6 +7,8 @@
 #include "symbolTable.h"
 #include "value.h"
 
+typedef struct VM VM;
+
 typedef enum {
     FUNCTION_OBJECT,
     STRING_OBJECT,
@@ -60,20 +62,22 @@ typedef struct {
  * @brief Allocates space for a new FunctionObject* and initializes
  * its members to default values. Returns the new FunctionObject*.
  * 
+ * @param vm
  * @return FunctionObject* 
  */
-FunctionObject* newFunction();
+FunctionObject* newFunction(VM* vm);
 
 /**
  * @brief Creates a new String* object by copying the given array
  * of characters, under the assumption that it may be needed by the
  * caller.
  * 
+ * @param vm
  * @param characters 
  * @param length 
  * @return String* 
  */
-String* copyString(const char* characters, int length);
+String* copyString(VM* vm, const char* characters, int length);
 
 static inline bool isObjectType(Value value, ObjectType type) {
     return value.type == OBJ_VALUE && value.as.obj->type == type;
