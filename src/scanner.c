@@ -141,12 +141,12 @@ static TokenType identifierType() {
                                 scanner.isNextIdentifer = true;
                                 return TOKEN_CALL;
                             }
-                        break;
+                    break;
                     case 'o':
                         return checkKeyword(2, 2, "py", TOKEN_COPY);
                 }
             }
-            break;
+        break;
         case 'd':
             return checkKeyword(1, 2, "iv", TOKEN_DIV);
         case 'e':
@@ -161,7 +161,7 @@ static TokenType identifierType() {
                                 scanner.isNextIdentifer = true;
                                 return TOKEN_GOFALSE;
                             }
-                            break;
+                        break;
                         case 't':
                             if (scanner.current - scanner.start > 3) {
                                 switch (scanner.start[3]) {
@@ -174,14 +174,14 @@ static TokenType identifierType() {
                                             scanner.isNextIdentifer = true;
                                             return TOKEN_GOTRUE;
                                         }
-                                        break;
+                                    break;
                                 }
                             }
-                            break;
+                        break;
                     }
                 }
             }
-            break;
+        break;
         case 'h':
             return checkKeyword(1, 3, "alt", TOKEN_HALT);
         case 'l':
@@ -193,12 +193,12 @@ static TokenType identifierType() {
                                 scanner.isNextIdentifer = true;
                                 return TOKEN_LABEL;
                             }
-                        break;
+                    break;
                     case 'v':
                         return checkKeyword(2, 4, "alue", TOKEN_LVALUE);
                 }
             }
-            break;
+        break;
         case 'p':
             if (scanner.current - scanner.start > 1) {
                 switch (scanner.start[1]) {
@@ -210,7 +210,7 @@ static TokenType identifierType() {
                         return checkKeyword(2, 2, "sh", TOKEN_PUSH);
                 }
             }
-            break;
+        break;
         case 'r':
             if (scanner.current - scanner.start > 1) {
                 switch (scanner.start[1]) {
@@ -220,14 +220,14 @@ static TokenType identifierType() {
                         return checkKeyword(2, 4, "alue", TOKEN_RVALUE);
                 }
             }
-            break;
+        break;
         case 's':
             if (scanner.current - scanner.start == 4 && \
                 memcmp(scanner.start + 1, "how", 3) == 0) {
                 scanner.isInShow = true;
                 return TOKEN_SHOW;
             }
-            break;
+        break;
     }
     return TOKEN_IDENTIFIER;
 }
@@ -248,7 +248,7 @@ static Token makeNumber() {
 }
 
 static Token makeString() {
-    while(peek() != '\n') {
+    while (peek() != '\n') {
         advance();
     }
     Token token;
@@ -257,6 +257,36 @@ static Token makeString() {
     token.start = scanner.start + 1;    // Add 1 to skip the first space after show keyword
     token.length = (int)(scanner.current - scanner.start);
     return token;
+}
+
+static Token makeSegmentToken() {
+    while (isAlpha(peek())) {
+        advance();
+    }
+    if (scanner.current - scanner.start > 1) {
+        switch (scanner.start[1]) {
+            case 'd':
+                if (scanner.current - scanner.start == 5 && 
+                    memcmp(scanner.start + 2, "ata", 3) == 0) {
+                        return makeToken(TOKEN_DATA);
+                }
+            break;
+            case 'i':
+                if (scanner.current - scanner.start == 4 && 
+                    memcmp(scanner.start + 2, "nt", 2) == 0) {
+                        return makeToken(TOKEN_INT);
+                }
+            break;
+            case 't':
+                if (scanner.current - scanner.start == 5 && 
+                    memcmp(scanner.start + 2, "ext", 3) == 0) {
+                        return makeToken(TOKEN_TEXT);
+                }
+            break;
+        }
+    }
+    return errorToken("Identifier cannot begin with a dot.");
+
 }
 
 Token scanToken() {
@@ -274,6 +304,10 @@ Token scanToken() {
     }
 
     char c = advance();
+
+    if (c == '.') {
+        return makeSegmentToken();
+    }
 
     if (isAlpha(c) || scanner.isNextIdentifer) {
         scanner.isNextIdentifer = false;
@@ -314,7 +348,10 @@ Token scanToken() {
             if (match('=')) {
                 return makeToken(TOKEN_ASSIGN);
             }
-            break;
+            if (match('&')) {
+                return makeToken(TOKEN_ASSIGN_ADDRESS);
+            }
+        break;
     }
     
     return errorToken("Unexpected character.");
