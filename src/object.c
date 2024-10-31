@@ -19,7 +19,7 @@ static String* allocateString(VM* vm, char* characters, int length, uint32_t has
     string->characaters = characters;
     string->length = length;
     string->hash = hash;
-    tableSet(&vm->strings, string, (Value){NUM_VALUE, {.number = 0}});
+    tableSetValue(&vm->strings, string, (Value){NUM_VALUE, {.number = 0}});
     return string;
 }
 

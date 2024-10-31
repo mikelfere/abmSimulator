@@ -94,12 +94,12 @@ static InterpretResult run(VM* vm) {
                 Value name = frame->function->sequence.constants.values[*frame->ip++];
                 Value val = (Value){NUM_VALUE, {.number = 0}};
                 if (!inReturn) {
-                    if (!tableGet(&tempFrame->locals, (String*)name.as.obj, &val)) {
-                        tableSet(&tempFrame->locals, (String*)name.as.obj, val);
+                    if (!tableGetValue(&tempFrame->locals, (String*)name.as.obj, &val)) {
+                        tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
                     }
                 } else {
-                    if (!tableGet(&frame->locals, (String*)name.as.obj, &val)) {
-                        tableSet(&frame->locals, (String*)name.as.obj, val);
+                    if (!tableGetValue(&frame->locals, (String*)name.as.obj, &val)) {
+                        tableSetValue(&frame->locals, (String*)name.as.obj, val);
                     }
                 }
                 push(vm, name);
@@ -109,12 +109,12 @@ static InterpretResult run(VM* vm) {
                 Value name = frame->function->sequence.constants.values[*frame->ip++];
                 Value val = (Value){NUM_VALUE, {.number = 0}};
                 if (!inReturn) {
-                    if (!tableGet(&frame->locals, (String*)name.as.obj, &val)) {
-                        tableSet(&frame->locals, (String*)name.as.obj, val);
+                    if (!tableGetValue(&frame->locals, (String*)name.as.obj, &val)) {
+                        tableSetValue(&frame->locals, (String*)name.as.obj, val);
                     }
                 } else {
-                    if (!tableGet(&tempFrame->locals, (String*)name.as.obj, &val)) {
-                        tableSet(&tempFrame->locals, (String*)name.as.obj, val);
+                    if (!tableGetValue(&tempFrame->locals, (String*)name.as.obj, &val)) {
+                        tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
                     }
                 }
                 push(vm, val);
@@ -249,9 +249,9 @@ static InterpretResult run(VM* vm) {
                 Value val = pop(vm);
                 Value name = pop(vm);
                 if (!inReturn) {
-                    tableSet(&tempFrame->locals, (String*)name.as.obj, val);
+                    tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
                 } else {
-                    tableSet(&frame->locals, (String*)name.as.obj, val);
+                    tableSetValue(&frame->locals, (String*)name.as.obj, val);
                 }
                 break;
             }
@@ -260,7 +260,7 @@ static InterpretResult run(VM* vm) {
                 frame->ip += 2;
                 int address = (int)(frame->ip[-2] << 8 | frame->ip[-1]);
                 Value jumpToAddress;
-                if (tableGet(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
+                if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
                     int offset = jumpToAddress.as.number - address - 3;
                     frame->ip += offset;
                 } else {
@@ -274,7 +274,7 @@ static InterpretResult run(VM* vm) {
                 if (pop(vm).as.number != 0) {
                     int address = (int)(frame->ip[-2] << 8 | frame->ip[-1]);
                     Value jumpToAddress;
-                    if (tableGet(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
+                    if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
                         int offset = jumpToAddress.as.number - address - 3;
                         frame->ip += offset;
                     } else {
@@ -289,7 +289,7 @@ static InterpretResult run(VM* vm) {
                 if (pop(vm).as.number == 0) {
                     int address = (int)(frame->ip[-2] << 8 | frame->ip[-1]);
                     Value jumpToAddress;
-                    if (tableGet(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
+                    if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
                         int offset = jumpToAddress.as.number - address - 3;
                         frame->ip += offset;
                     } else {
@@ -312,7 +312,7 @@ static InterpretResult run(VM* vm) {
             case OP_CALL: {
                 Value name = frame->function->sequence.constants.values[*frame->ip++];
                 Value function;
-                if (!tableGet(&(&vm->frames[0])->function->labels, (String*)name.as.obj, &function)) {
+                if (!tableGetValue(&(&vm->frames[0])->function->labels, (String*)name.as.obj, &function)) {
                     runtimeError(vm, "No function with that name.");
                 }
                 if (!callValue(vm, function)) {

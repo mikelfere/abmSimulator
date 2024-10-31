@@ -8,7 +8,7 @@
  * @c: length -> int[256] : stores length of every string in names
  * @d: names -> char[256][256] : array of strings (names)
  */
-typedef struct{
+typedef struct {
     int capacity;
     int count;
     int length[256];

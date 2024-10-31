@@ -292,10 +292,10 @@ static void declaration(VM* vm) {
             // printf("New function\n");
             FunctionObject* function = compileFunction(vm, TYPE_FUNCTION);
             Value fun = (Value){OBJ_VALUE, {.obj = (Object*) function}};
-            if (tableGet(&currentCompiler->function->labels, key, &fun)) {
+            if (tableGetValue(&currentCompiler->function->labels, key, &fun)) {
                 error("Function already defined.");
             }
-            tableSet(&currentCompiler->function->labels, key, fun);
+            tableSetValue(&currentCompiler->function->labels, key, fun);
         } else {
             // printf("New Label\n");
             int labelIndex = getNameIndex(&currentCompiler->labelList, name->start, name->length);
@@ -305,10 +305,10 @@ static void declaration(VM* vm) {
                 addName(&currentCompiler->labelList, name->start, name->length);
             }
             Value value = (Value){NUM_VALUE, {.number = currentSequence()->count}};
-            if (tableGet(&currentCompiler->function->labels, key, &value)) {
+            if (tableGetValue(&currentCompiler->function->labels, key, &value)) {
                 error("Label already defined.");
             }
-            tableSet(&currentCompiler->function->labels, key, value);
+            tableSetValue(&currentCompiler->function->labels, key, value);
         }
         // printf("After label\n");
     } else {
