@@ -22,7 +22,6 @@ void freeTable(Table* table) {
 
 static Entry* findEntry(Entry* entries, int capacity, String* key) {
     uint32_t index = key->hash % capacity;
-    Entry* tombstone = NULL;
     for (;;) {
         Entry* entry = &entries[index];
         if (entry->key  == key || entry->key == NULL) {
@@ -32,7 +31,7 @@ static Entry* findEntry(Entry* entries, int capacity, String* key) {
     }
 } 
 
-bool tableGet(Table* table, String* key, Value* value) {
+bool tableGetValue(Table* table, String* key, Value* value) {
     if (table->count == 0) {
         return false;
     }
@@ -51,6 +50,7 @@ static void adjustCapacity(Table* table, int capacity) {
     for (int i = 0; i < capacity; i++) {
         entries[i].key = NULL;
         entries[i].value.as.number = 0;
+        entries[i].address = -1;
     }
 
     table->count = 0;
@@ -62,6 +62,7 @@ static void adjustCapacity(Table* table, int capacity) {
         Entry* destination = findEntry(entries, capacity, entry->key);
         destination->key = entry->key;
         destination->value = entry->value;
+        destination->address = entry->address;
         table->count++;
     }
 
@@ -71,15 +72,33 @@ static void adjustCapacity(Table* table, int capacity) {
     table->capacity = capacity;
 }
 
-bool tableSet(Table* table, String* key, Value value) {
+bool tableSetValue(Table* table, String* key, Value value) {
     if (table->capacity * TABLE_LOAD_FACTOR < table->count + 1 ) {
         int capacity = table->capacity < 16 ? 16 : table->capacity * 2;
         adjustCapacity(table, capacity);
     }
     Entry* entry = findEntry(table->entries, table->capacity, key);
     bool isNewKey = entry->key == NULL;
-    if (isNewKey && entry->value.as.number == 0) {
+    if (isNewKey) {
         table->count++;
+    }
+    entry->key = key;
+    entry->value = value;
+    return isNewKey;
+}
+
+bool tableSetValueAddress(Table* table, String* key, Value value, int* address) {
+    if (table->capacity * TABLE_LOAD_FACTOR < table->count + 1 ) {
+        int capacity = table->capacity < 16 ? 16 : table->capacity * 2;
+        adjustCapacity(table, capacity);
+    }
+    Entry* entry = findEntry(table->entries, table->capacity, key);
+    bool isNewKey = entry->key == NULL;
+    if (isNewKey) {
+        table->count++;
+        entry->address = *address;   // Only change address if new Entry
+    } else {
+        *address = entry->address;
     }
     entry->key = key;
     entry->value = value;

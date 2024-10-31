@@ -11,6 +11,7 @@
 typedef struct {
     String* key;
     Value value;
+    int address;
 } Entry;
 
 /**
@@ -50,13 +51,13 @@ void freeTable(Table* table);
  * @return true 
  * @return false 
  */
-bool tableGet(Table* table, String* key, Value* value);
+bool tableGetValue(Table* table, String* key, Value* value);
 
 /**
  * @brief Checks if table contains more entries than 75% of its capacity.
  * Reallocates a new table with double the capacity if true. If the given 
  * key isn't found in the table, create new entry and assign given value.
- * Update count as necessary.
+ * Update count as necessary. Returns true if set Entry is new.
  * 
  * @param table 
  * @param key 
@@ -64,28 +65,22 @@ bool tableGet(Table* table, String* key, Value* value);
  * @return true 
  * @return false 
  */
-bool tableSet(Table* table, String* key, Value value);
+bool tableSetValue(Table* table, String* key, Value value);
 
 /**
- * @brief Handles entry deletion by creation of "tombstones", so as to keep
- * the table in working condition without need of reallocation with each
- * deletion. A tombstone is defined as an entry with key = NULL and 
- * value = INT_MIN.
+ * @brief Checks if table contains more entries than 75% of its capacity.
+ * Reallocates a new table with double the capacity if true. If the given 
+ * key isn't found in the table, create new entry and assign given value.
+ * Set address of entry to given address. Update count as necessary.
  * 
  * @param table 
  * @param key 
+ * @param value 
+ * @param address 
  * @return true 
  * @return false 
  */
-bool deleteEntry(Table* table, String* key);
-
-/**
- * @brief Copies all entries from the first table to the second table.
- * 
- * @param from 
- * @param to 
- */
-void tableCopyEntries(Table* from, Table* to);
+bool tableSetValueAddress(Table* table, String* key, Value value, int* address);
 
 /**
  * @brief Check if any entry's key in the given table is equal to the given
