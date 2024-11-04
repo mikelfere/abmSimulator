@@ -43,15 +43,16 @@ void freeTable(Table* table);
 
 /**
  * @brief Searches the given table to find the given key. If found returns
- * true and assigns corresponding value to given value argument.
+ * true and assigns corresponding value to given value argument. Returns -2
+ * if entry is declared in local scope, -1 if entry is not defined, and the
+ * address if it refers to global memory.
  * 
  * @param table 
  * @param key 
  * @param value 
- * @return true 
- * @return false 
+ * @return int  
  */
-bool tableGetValue(Table* table, String* key, Value* value);
+int tableGetValue(Table* table, String* key, Value* value);
 
 /**
  * @brief Checks if table contains more entries than 75% of its capacity.
@@ -81,6 +82,10 @@ bool tableSetValue(Table* table, String* key, Value value);
  * @return false 
  */
 bool tableSetValueAddress(Table* table, String* key, Value value, int* address);
+
+bool tableSetAddress(Table* table, String* key, int* address);
+
+bool tableChangeAddress(Table* table, String* key, int address);
 
 /**
  * @brief Check if any entry's key in the given table is equal to the given

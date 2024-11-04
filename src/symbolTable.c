@@ -31,18 +31,24 @@ static Entry* findEntry(Entry* entries, int capacity, String* key) {
     }
 } 
 
-bool tableGetValue(Table* table, String* key, Value* value) {
+int tableGetValue(Table* table, String* key, Value* value) {
     if (table->count == 0) {
-        return false;
+        return -1;
     }
 
     Entry* entry = findEntry(table->entries, table->capacity, key);
+    int address = entry->address;
     if (entry->key == NULL) {
-        return false;
+        // address == -1 if entry not set
+        return address;
     }
 
     *value = entry->value;
-    return true;
+    if (address >= 0) {
+        return address;
+    }
+    // -2 will mean that entry refers only to local variables
+    return -2;
 }
 
 static void adjustCapacity(Table* table, int capacity) {
@@ -103,6 +109,36 @@ bool tableSetValueAddress(Table* table, String* key, Value value, int* address) 
     entry->key = key;
     entry->value = value;
     return isNewKey;
+}
+
+bool tableSetAddress(Table* table, String* key, int* address) {
+    if (table->capacity * TABLE_LOAD_FACTOR < table->count + 1 ) {
+        int capacity = table->capacity < 16 ? 16 : table->capacity * 2;
+        adjustCapacity(table, capacity);
+    }
+    Entry* entry = findEntry(table->entries, table->capacity, key);
+    bool isNewKey = entry->key == NULL;
+    if (isNewKey) {
+        table->count++;
+        entry->address = *address;   // Only change address if new Entry
+    } else {
+        *address = entry->address;
+    }
+    entry->key = key;
+    return isNewKey;
+}
+
+bool tableChangeAddress(Table* table, String* key, int address) {
+    if (table->capacity * TABLE_LOAD_FACTOR < table->count + 1 ) {
+        int capacity = table->capacity < 16 ? 16 : table->capacity * 2;
+        adjustCapacity(table, capacity);
+    }
+    Entry* entry = findEntry(table->entries, table->capacity, key);
+    bool isNewKey = entry->key == NULL;
+    if (!isNewKey) {
+        entry->address = address;
+    }
+    return !isNewKey;
 }
 
 String* findString(Table* table, const char* characters, int length, \
