@@ -6,27 +6,27 @@
 #include "vm.h"
 
 typedef struct {
-    // int data;
     int capacity;
     int count;
     int* altAddresses;
-    int* bounds;
+    int* upperBounds;
+    int* lowerBounds;
+    Value* values;
     Table globals;
+    Table strings;
+    Object* objects;
 } Memory;
 
 typedef struct {
-    VM* core1;
-    VM* core2;
     Memory* memory;
 } Bus;
 
-extern Memory memory;
+// extern Memory memory;
 
-// void initBus(Bus* bus);
-// void freeBus(Bus* bus);
-void initMemory();
-void freeMemory();
-int setGlobal(String* key, Value value);
-bool getGlobal(String* key, Value* value);
+void initBus();
+void freeBus();
+void initMemory(Memory* memory);
+void freeMemory(Memory* memory);
+int setGlobal(Memory* memory, String* key);
 
 #endif
