@@ -36,7 +36,6 @@ typedef struct Object {
  * @b: length -> int : number of characters in string
  * @c: characters -> char* : the string itself
  * @d: hash -> uint32_t : the hash value of the string
- * 
  */
 typedef struct String {
     Object obj;
@@ -72,12 +71,13 @@ FunctionObject* newFunction(VM* vm);
  * of characters, under the assumption that it may be needed by the
  * caller.
  * 
- * @param vm
+ * @param table
+ * @param objects
  * @param characters 
  * @param length 
  * @return String* 
  */
-String* copyString(VM* vm, const char* characters, int length);
+String* copyString(Table* table, Object* objects, const char* characters, int length);
 
 static inline bool isObjectType(Value value, ObjectType type) {
     return value.type == OBJ_VALUE && value.as.obj->type == type;

@@ -6,25 +6,25 @@
 #include "symbolTable.h"
 #include "vm.h"
 
-static Object* allocateObject(VM* vm, size_t size, ObjectType type) {
+static Object* allocateObject(Object* objects, size_t size, ObjectType type) {
     Object* obj = (Object*)reallocate(NULL, 0, size);
     obj->type = type;
-    obj->next = vm->objects;
-    vm->objects = obj;
+    obj->next = objects;
+    objects = obj;
     return obj;
 }
 
-static String* allocateString(VM* vm, char* characters, int length, uint32_t hash) {
-    String* string = (String*)allocateObject(vm, sizeof(String), STRING_OBJECT);
+static String* allocateString(Table* table, Object* objects, char* characters, int length, uint32_t hash) {
+    String* string = (String*)allocateObject(objects, sizeof(String), STRING_OBJECT);
     string->characaters = characters;
     string->length = length;
     string->hash = hash;
-    tableSetValue(&vm->strings, string, (Value){NUM_VALUE, {.number = 0}});
+    tableSetValue(table, string, (Value){NUM_VALUE, {.number = 0}});
     return string;
 }
 
 FunctionObject* newFunction(VM* vm) {
-    FunctionObject* function = (FunctionObject*)allocateObject(vm, sizeof(FunctionObject), FUNCTION_OBJECT);
+    FunctionObject* function = (FunctionObject*)allocateObject(vm->objects, sizeof(FunctionObject), FUNCTION_OBJECT);
     function->name = NULL;
     initSequence(&function->sequence);
     initTable(&function->labels);
@@ -47,14 +47,14 @@ static uint32_t hashString(const char* key, int length) {
     return hash;
 }
 
-String* copyString(VM* vm, const char* characters, int length) {
+String* copyString(Table* table, Object* objects, const char* characters, int length) {
     uint32_t hash = hashString(characters, length);
-    String* interned = findString(&vm->strings, characters, length, hash);
+    String* interned = findString(table, characters, length, hash);
     if (interned != NULL) {
         return interned;
     }
     char* newCharacters = (char*)reallocate(NULL, 0, sizeof(char) * (length + 1));
     memcpy(newCharacters, characters, length);
     newCharacters[length] = '\0';
-    return allocateString(vm, newCharacters, length, hash);
+    return allocateString(table, objects, newCharacters, length, hash);
 }

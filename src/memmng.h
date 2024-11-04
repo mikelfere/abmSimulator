@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "object.h"
 #include "vm.h"
 
 /**
@@ -22,8 +23,8 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize);
  * list of objects and depending on the type, frees and resets all
  * members of the object.
  * 
- * @param vm
+ * @param objects
  */
-void freeObjects(VM* vm);
+void freeObjects(Object* objects);
 
 #endif
