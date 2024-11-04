@@ -1,6 +1,12 @@
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "compiler.h"
 #include "memmng.h"
@@ -40,6 +46,10 @@ void initVM(VM* vm) {
     // printf("after initStack\n");
     vm->objects = NULL;
     vm->frameCount = 0;
+
+    // vm->id = id;
+    // vm->canAccessMemory = true;
+
     // printf("initTable\n");
     initTable(&vm->strings);
     // printf("End of initVM\n");
@@ -47,7 +57,7 @@ void initVM(VM* vm) {
 
 void freeVM(VM* vm) {
     freeTable(&vm->strings);
-    freeObjects(vm);
+    freeObjects(vm->objects);
 }
 
 void push(VM* vm, Value value) {
@@ -83,8 +93,137 @@ static bool callValue(VM* vm, Value callee) {
     return false;
 }
 
-static InterpretResult run(VM* vm) {
-    bool inReturn = false;
+static void getAddress(int socket_fd, Value name, int* address) {
+    // printf("Getting address\n");
+    String* key = (String*)name.as.obj;
+    char buffer[1024] = "rad ";
+    // set address to -3 to indicate runtime error
+    if (key->length > 1019) {
+        *address = -3;
+        return;
+    }
+    int i;
+    for (i = 0; i < key->length; i++) {
+        // printf("i = %d\n", i);
+        buffer[i + 4] = key->characaters[i];
+    }
+    buffer[i + 4] = '\0';
+    // puts(buffer);
+    if (write(socket_fd, buffer, 1024) <= 0) {
+        perror("Could not write to bus");
+        exit(-1);
+    }
+	memset(buffer, '\0', sizeof(buffer));
+	if (read(socket_fd, buffer, sizeof(buffer)) <= 0) {
+        perror("Could not read from bus");
+        exit(-1);
+    }
+    // set address to -1 to indicate entry not set
+    if (memcmp(buffer, "nfd", 3)  == 0) {
+        *address = -1;
+        return;
+    } else {
+        char num[1024];
+        strncpy(num, buffer, 1024);
+        *address = atoi(num);
+    }
+    // printf("Got address\n");
+}
+
+static void getValue(int socket_fd, int address, Value* value) {
+    // printf("Getting value\n");
+    char buffer[1024] = "rvl ";
+    char num[256];
+    memset(num, '\0', sizeof(num));
+    sprintf(num, "%d", address);
+    int i = 0;
+    while (num[i] != '\0') {
+        buffer[i + 4] = num[i];
+        i++;
+    }
+    buffer[i + 4] = '\0';
+    if (write(socket_fd, buffer, 1024) <= 0) {
+        perror("Could not write to bus");
+        exit(-1);
+    }
+    memset(buffer, '\0', sizeof(buffer));
+    if (read(socket_fd, buffer, sizeof(buffer)) <= 0) {
+        perror("Could not read from bus");
+        exit(-1);
+    }
+    int val = atoi(buffer);
+    *value = (Value){NUM_VALUE, {.number = val}};
+    // printf("Got value\n");
+}
+
+// The data array will be assumed to contain 3 elements
+static void getAddressData(int socket_fd, int address, int* data) {
+    // printf("Getting address data\n");
+    char buffer[1024] = "rda ";
+    char num[256];
+    memset(num, '\0', sizeof(num));
+    sprintf(num, "%d", address);
+    int i = 0;
+    while (num[i] != '\0') {
+        buffer[i + 4] = num[i];
+        i++;
+    }
+    buffer[i + 4] = '\0';
+    i = 0;
+    if (write(socket_fd, buffer, 1024) <= 0) {
+        perror("Could not write to bus");
+        exit(-1);
+    }
+	memset(buffer, '\0', sizeof(buffer));
+	if (read(socket_fd, buffer, sizeof(buffer)) <= 0) {
+        perror("Could not read from bus");
+        exit(-1);
+    }
+    // set address to -1 to indicate entry not set
+    if (memcmp(buffer, "nfd", 3) == 0) {
+        data[0] = -1;
+        return;
+    } else {
+        int j = 0, k = 0;
+        char num[256];
+        while (buffer[i] != '\0') {
+            while (buffer[i] != ' ') {
+                num[j++] = buffer[i++];
+            }
+            num[j] = '\0';
+            data[k++] = atoi(num);
+            j = 0;
+            i++;
+        }
+    }
+    // printf("Got address data\n");
+}
+
+static void setValue(int socket_fd, Value value, int address) {
+    char buffer[1024] = "wrv ";
+    int i = 4, j = 0;
+    char num[256];
+    memset(num, '\0', sizeof(num));
+    sprintf(num, "%d", address);
+    while (num[j] != '\0') {
+        buffer[i++] = num[j++]; 
+    }
+    buffer[i++] = ' ';
+    memset(num, '\0', sizeof(num));
+    sprintf(num, "%d", value.as.number);
+    j = 0;
+    while (num[j] != '\0') {
+        buffer[i++] = num[j++]; 
+    }
+    if (write(socket_fd, buffer, 1024) <= 0) {
+        perror("Could not write to bus");
+        exit(-1);
+    }
+}
+
+static InterpretResult run(int socket_fd, VM* vm) {
+    bool inReturn = false, isNumAddress = false;
+    int address;
     CallFrame* frame = &vm->frames[vm->frameCount - 1];
     CallFrame* tempFrame = frame;
     for (;;) {
@@ -93,13 +232,19 @@ static InterpretResult run(VM* vm) {
             case OP_LVALUE: {
                 Value name = frame->function->sequence.constants.values[*frame->ip++];
                 Value val = (Value){NUM_VALUE, {.number = 0}};
-                if (!inReturn) {
-                    if (!tableGetValue(&tempFrame->locals, (String*)name.as.obj, &val)) {
-                        tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
-                    }
-                } else {
-                    if (!tableGetValue(&frame->locals, (String*)name.as.obj, &val)) {
-                        tableSetValue(&frame->locals, (String*)name.as.obj, val);
+                getAddress(socket_fd, name, &address);
+                // If cannot search for name in global memory
+                if (address == -3) {
+                    runtimeError(vm, "Variable name cannot be larger than 1019 characters");
+                } else if (address == -1) {     // If not defined in global memory
+                    if (!inReturn) {
+                        if (tableGetValue(&tempFrame->locals, (String*)name.as.obj, &val) == -1) {
+                            tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
+                        }
+                    } else {
+                        if (tableGetValue(&frame->locals, (String*)name.as.obj, &val) == -1) {
+                            tableSetValue(&frame->locals, (String*)name.as.obj, val);
+                        }
                     }
                 }
                 push(vm, name);
@@ -108,28 +253,96 @@ static InterpretResult run(VM* vm) {
             case OP_RVALUE: {
                 Value name = frame->function->sequence.constants.values[*frame->ip++];
                 Value val = (Value){NUM_VALUE, {.number = 0}};
-                if (!inReturn) {
-                    if (!tableGetValue(&frame->locals, (String*)name.as.obj, &val)) {
-                        tableSetValue(&frame->locals, (String*)name.as.obj, val);
+                getAddress(socket_fd, name, &address);
+                // If cannot search for name in global memory
+                if (address == -3) {
+                    runtimeError(vm, "Variable name cannot be larger than 1019 characters");
+                } else if (address == -1) {     // If not defined in global memory
+                    if (!inReturn) {
+                        if (tableGetValue(&frame->locals, (String*)name.as.obj, &val) == -1) {
+                            tableSetValue(&frame->locals, (String*)name.as.obj, val);
+                        }
+                    } else {
+                        if (tableGetValue(&tempFrame->locals, (String*)name.as.obj, &val) == -1) {
+                            tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
+                        }
                     }
-                } else {
-                    if (!tableGetValue(&tempFrame->locals, (String*)name.as.obj, &val)) {
-                        tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
-                    }
+                } else {    // If found in global memory
+                    getValue(socket_fd, address, &val);
                 }
                 push(vm, val);
                 break;
             }
             case OP_ADD: {
-                int b = pop(vm).as.number;
-                int a = pop(vm).as.number;
-                push(vm, (Value){NUM_VALUE, {.number = (a + b)}});
+                Value b = pop(vm);
+                Value a = pop(vm);
+                if (a.type == OBJ_VALUE) {
+                    int address;
+                    Value val;
+                    // data[0] -> altAddress, data[1] = upper boundary, data[2] = lower boundary
+                    int data[3];
+                    getAddress(socket_fd, a, &address);
+                    printf("Address is %d\n", address);
+                    // If cannot search for name in global memory
+                    if (address == -3) {
+                        runtimeError(vm, "Variable name cannot be larger than 1019 characters");
+                    } else if (address == -1) {     // If not defined in global memory 
+                        address = tableGetValue(&frame->locals, (String*)a.as.obj, &val);
+                        printf("Address is %d\n", address);
+                        if (address < 0) {
+                            runtimeError(vm, "Variable doesn't have an address");
+                        }
+                    } 
+                    getAddressData(socket_fd, address, data);
+                    if (address + b.as.number > data[1]) {
+                        getAddressData(socket_fd, data[0], data);
+                        if (address + b.as.number > data[1]) {
+                            runtimeError(vm, "Cannot access memory location");
+                        } else {
+                            push(vm, (Value){NUM_VALUE, {.number = address + b.as.number}});
+                        }
+                    } else {
+                        push(vm, (Value){NUM_VALUE, {.number = address + b.as.number}});
+                    }
+                    isNumAddress = true;
+                } else {
+                    push(vm, (Value){NUM_VALUE, {.number = (a.as.number + b.as.number)}});
+                }
                 break;
             }
             case OP_SUBTRACT: {
-                int b = pop(vm).as.number;
-                int a = pop(vm).as.number;
-                push(vm, (Value){NUM_VALUE, {.number = (a - b)}});
+                Value b = pop(vm);
+                Value a = pop(vm);
+                if (a.type == OBJ_VALUE) {
+                    int address;
+                    Value val;
+                    // data[0] -> altAddress, data[1] = upper boundary, data[2] = lower boundary
+                    int data[3];
+                    getAddress(socket_fd, a, &address);
+                    // If cannot search for name in global memory
+                    if (address == -3) {
+                        runtimeError(vm, "Variable name cannot be larger than 1019 characters");
+                    } else if (address == -1) {     // If not defined in global memory 
+                        address = tableGetValue(&frame->locals, (String*)a.as.obj, &val);
+                        if (address < 0) {
+                            runtimeError(vm, "Variable doesn't have an address");
+                        }
+                    } 
+                    getAddressData(socket_fd, address, data);
+                    if (address - b.as.number < data[2]) {
+                        getAddressData(socket_fd, data[0], data);
+                        if (address - b.as.number < data[2]) {
+                            runtimeError(vm, "Cannot access memory location");
+                        } else {
+                            push(vm, (Value){NUM_VALUE, {.number = address - b.as.number}});
+                        }
+                    } else {
+                        push(vm, (Value){NUM_VALUE, {.number = address - b.as.number}});
+                    }
+                    isNumAddress = true;
+                } else {
+                    push(vm, (Value){NUM_VALUE, {.number = (a.as.number - b.as.number)}});
+                }
                 break;
             }
             case OP_MULTIPLY: {
@@ -248,11 +461,46 @@ static InterpretResult run(VM* vm) {
             case OP_ASSIGN: {
                 Value val = pop(vm);
                 Value name = pop(vm);
-                if (!inReturn) {
-                    tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
+                Value temp;
+                int address;
+                getAddress(socket_fd, name, &address);
+                // If cannot search for name in global memory
+                if (address == -3) {
+                    runtimeError(vm, "Variable name cannot be larger than 1019 characters");
+                } else if (address == -1) {     // If variable is not globally defined
+                    if (!inReturn) {
+                        tableSetValue(&tempFrame->locals, (String*)name.as.obj, val);
+                        address = tableGetValue(&tempFrame->locals, (String*)name.as.obj, &temp);
+                    } else {
+                        tableSetValue(&frame->locals, (String*)name.as.obj, val);
+                        address = tableGetValue(&frame->locals, (String*)name.as.obj, &temp);
+                    }
+                    if (address >= 0) {
+                        setValue(socket_fd, val, address);
+                    }
                 } else {
-                    tableSetValue(&frame->locals, (String*)name.as.obj, val);
+                    setValue(socket_fd, val, address);
+                }                
+                break;
+            }
+            case OP_ASSIGN_ADDRESS: {
+                Value name2 = pop(vm);
+                Value name1 = pop(vm);
+                Value val = (Value){NUM_VALUE, {.number = 0}};
+                if (isNumAddress) {
+                    isNumAddress = false;
+                    tableChangeAddress(&frame->locals, (String*)name1.as.obj, name2.as.number);
+                    break;
                 }
+                int address;
+                getAddress(socket_fd, name2, &address);
+                // If cannot search for name in global memory
+                if (address == -3) {
+                    runtimeError(vm, "Variable name cannot be larger than 1019 characters");
+                } else if (address == -1) {     // If variable is not globally defined
+                    address = tableGetValue(&frame->locals, (String*)name2.as.obj, &val);
+                } 
+                tableChangeAddress(&frame->locals, (String*)name1.as.obj, address);
                 break;
             }
             case OP_JUMP: {
@@ -260,7 +508,7 @@ static InterpretResult run(VM* vm) {
                 frame->ip += 2;
                 int address = (int)(frame->ip[-2] << 8 | frame->ip[-1]);
                 Value jumpToAddress;
-                if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
+                if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress) == -2) {
                     int offset = jumpToAddress.as.number - address - 3;
                     frame->ip += offset;
                 } else {
@@ -274,7 +522,7 @@ static InterpretResult run(VM* vm) {
                 if (pop(vm).as.number != 0) {
                     int address = (int)(frame->ip[-2] << 8 | frame->ip[-1]);
                     Value jumpToAddress;
-                    if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
+                    if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress) == -2) {
                         int offset = jumpToAddress.as.number - address - 3;
                         frame->ip += offset;
                     } else {
@@ -289,7 +537,7 @@ static InterpretResult run(VM* vm) {
                 if (pop(vm).as.number == 0) {
                     int address = (int)(frame->ip[-2] << 8 | frame->ip[-1]);
                     Value jumpToAddress;
-                    if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress)) {
+                    if (tableGetValue(&frame->function->labels, (String*)name.as.obj, &jumpToAddress) == -2) {
                         int offset = jumpToAddress.as.number - address - 3;
                         frame->ip += offset;
                     } else {
@@ -312,7 +560,7 @@ static InterpretResult run(VM* vm) {
             case OP_CALL: {
                 Value name = frame->function->sequence.constants.values[*frame->ip++];
                 Value function;
-                if (!tableGetValue(&(&vm->frames[0])->function->labels, (String*)name.as.obj, &function)) {
+                if (tableGetValue(&(&vm->frames[0])->function->labels, (String*)name.as.obj, &function) == -1) {
                     runtimeError(vm, "No function with that name.");
                 }
                 if (!callValue(vm, function)) {
@@ -334,9 +582,9 @@ static InterpretResult run(VM* vm) {
     }
 }
 
-InterpretResult interpret(VM* vm, const char* source) {
-    printf("in interpret\n");
-    FunctionObject* function = compile(vm, source);
+InterpretResult interpret(int socket_fd, VM* vm, const char* source) {
+    // printf("in interpret\n");
+    FunctionObject* function = compile(socket_fd, vm, source);
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
     }
@@ -344,5 +592,5 @@ InterpretResult interpret(VM* vm, const char* source) {
     push(vm, (Value){OBJ_VALUE, {.obj = (Object*)function}});
     call(vm, function);
 
-    return run(vm);
+    return run(socket_fd, vm);
 }

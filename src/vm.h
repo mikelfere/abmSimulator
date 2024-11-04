@@ -13,15 +13,12 @@
 /**
  * struct CallFrame - Used to manage function Calls
  * @a: function -> FunctionObject* : 
- * @b: ip -> uint8_t* : 
- * @c: stackTop -> Value* :
- *
- * Description: Longer description
+ * @b: ip -> uint8_t* :
+ * @c: locals -> Table :
  */
 typedef struct {
     FunctionObject* function;
     uint8_t* ip;
-    // Value* stackTop;
     Table locals;
 } CallFrame;
 
@@ -51,9 +48,6 @@ typedef enum {
     INTERPRET_RUNTIME_ERROR,
 } InterpretResult;
 
-// Make the vm object available to all files (temporary)
-// extern VM vm;
-
 /**
  * @brief Sets up all members of vm to their default values
  * 
@@ -78,7 +72,7 @@ void freeVM(VM* vm);
  * @param source
  * @return InterpretResult 
  */
-InterpretResult interpret(VM* vm, const char* source);
+InterpretResult interpret(int socket_fd, VM* vm, const char* source);
 
 /**
  * @brief Pushes the given value to vm's Value stack and increments 

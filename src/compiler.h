@@ -48,6 +48,6 @@ typedef struct Compiler {
  * @param source 
  * @return FunctionObject* 
  */
-FunctionObject* compile(VM* vm, const char* source);
+FunctionObject* compile(int socket_fd, VM* vm, const char* source);
 
 #endif

@@ -28,6 +28,7 @@ typedef enum {
     OP_SHOW,
     OP_COPY,
     OP_ASSIGN,
+    OP_ASSIGN_ADDRESS,
     OP_JUMP,
     OP_JUMP_IF_FALSE,
     OP_JUMP_IF_TRUE,
