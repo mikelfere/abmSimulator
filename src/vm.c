@@ -94,7 +94,6 @@ static bool callValue(VM* vm, Value callee) {
 }
 
 static void getAddress(int socket_fd, Value name, int* address) {
-    // printf("Getting address\n");
     String* key = (String*)name.as.obj;
     char buffer[1024] = "rad ";
     // set address to -3 to indicate runtime error
@@ -104,11 +103,9 @@ static void getAddress(int socket_fd, Value name, int* address) {
     }
     int i;
     for (i = 0; i < key->length; i++) {
-        // printf("i = %d\n", i);
         buffer[i + 4] = key->characaters[i];
     }
     buffer[i + 4] = '\0';
-    // puts(buffer);
     if (write(socket_fd, buffer, 1024) <= 0) {
         perror("Could not write to bus");
         exit(-1);
@@ -127,11 +124,9 @@ static void getAddress(int socket_fd, Value name, int* address) {
         strncpy(num, buffer, 1024);
         *address = atoi(num);
     }
-    // printf("Got address\n");
 }
 
 static void getValue(int socket_fd, int address, Value* value) {
-    // printf("Getting value\n");
     char buffer[1024] = "rvl ";
     char num[256];
     memset(num, '\0', sizeof(num));
@@ -153,12 +148,10 @@ static void getValue(int socket_fd, int address, Value* value) {
     }
     int val = atoi(buffer);
     *value = (Value){NUM_VALUE, {.number = val}};
-    // printf("Got value\n");
 }
 
 // The data array will be assumed to contain 3 elements
 static void getAddressData(int socket_fd, int address, int* data) {
-    // printf("Getting address data\n");
     char buffer[1024] = "rda ";
     char num[256];
     memset(num, '\0', sizeof(num));
@@ -196,7 +189,6 @@ static void getAddressData(int socket_fd, int address, int* data) {
             i++;
         }
     }
-    // printf("Got address data\n");
 }
 
 static void setValue(int socket_fd, Value value, int address) {
@@ -215,6 +207,8 @@ static void setValue(int socket_fd, Value value, int address) {
     while (num[j] != '\0') {
         buffer[i++] = num[j++]; 
     }
+    buffer[i] = '\0';
+    puts(buffer);
     if (write(socket_fd, buffer, 1024) <= 0) {
         perror("Could not write to bus");
         exit(-1);
@@ -282,19 +276,18 @@ static InterpretResult run(int socket_fd, VM* vm) {
                     // data[0] -> altAddress, data[1] = upper boundary, data[2] = lower boundary
                     int data[3];
                     getAddress(socket_fd, a, &address);
-                    printf("Address is %d\n", address);
                     // If cannot search for name in global memory
                     if (address == -3) {
                         runtimeError(vm, "Variable name cannot be larger than 1019 characters");
                     } else if (address == -1) {     // If not defined in global memory 
                         address = tableGetValue(&frame->locals, (String*)a.as.obj, &val);
-                        printf("Address is %d\n", address);
-                        if (address < 0) {
+                        if (address < 0) {          // If not found in local memory either
                             runtimeError(vm, "Variable doesn't have an address");
                         }
                     } 
                     getAddressData(socket_fd, address, data);
                     if (address + b.as.number > data[1]) {
+                        address = data[0];
                         getAddressData(socket_fd, data[0], data);
                         if (address + b.as.number > data[1]) {
                             runtimeError(vm, "Cannot access memory location");
@@ -324,12 +317,13 @@ static InterpretResult run(int socket_fd, VM* vm) {
                         runtimeError(vm, "Variable name cannot be larger than 1019 characters");
                     } else if (address == -1) {     // If not defined in global memory 
                         address = tableGetValue(&frame->locals, (String*)a.as.obj, &val);
-                        if (address < 0) {
+                        if (address < 0) {          // If not found in local memory either
                             runtimeError(vm, "Variable doesn't have an address");
                         }
                     } 
                     getAddressData(socket_fd, address, data);
                     if (address - b.as.number < data[2]) {
+                        address = data[0];
                         getAddressData(socket_fd, data[0], data);
                         if (address - b.as.number < data[2]) {
                             runtimeError(vm, "Cannot access memory location");
@@ -490,6 +484,8 @@ static InterpretResult run(int socket_fd, VM* vm) {
                 if (isNumAddress) {
                     isNumAddress = false;
                     tableChangeAddress(&frame->locals, (String*)name1.as.obj, name2.as.number);
+                    getValue(socket_fd, name2.as.number, &val);
+                    tableSetValue(&frame->locals, (String*)name1.as.obj, val);
                     break;
                 }
                 int address;
@@ -500,7 +496,10 @@ static InterpretResult run(int socket_fd, VM* vm) {
                 } else if (address == -1) {     // If variable is not globally defined
                     address = tableGetValue(&frame->locals, (String*)name2.as.obj, &val);
                 } 
-                tableChangeAddress(&frame->locals, (String*)name1.as.obj, address);
+                if (address >= 0) {
+                    tableChangeAddress(&frame->locals, (String*)name1.as.obj, address);
+                    tableSetValue(&frame->locals, (String*)name1.as.obj, val);
+                }
                 break;
             }
             case OP_JUMP: {
@@ -583,7 +582,6 @@ static InterpretResult run(int socket_fd, VM* vm) {
 }
 
 InterpretResult interpret(int socket_fd, VM* vm, const char* source) {
-    // printf("in interpret\n");
     FunctionObject* function = compile(socket_fd, vm, source);
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
