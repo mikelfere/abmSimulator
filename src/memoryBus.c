@@ -173,7 +173,6 @@ void* handleCore(void* arg) {
                     buffer[j++] = ' ';
                 }
                 buffer[j] = '\0';
-                puts(buffer);
                 if (write(core->socket, buffer, 1024) <= 0) {
                     perror("Could not write to core");
                     exit(-1);
