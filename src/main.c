@@ -62,6 +62,7 @@ static void runFile(int socket_fd, VM* vm, const char* filePath) {
 int main(int argc, char* argv[]) {
     initNameList(&functionNames);
 
+    // Setting up the socket for IPC
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         perror("Socket error");
@@ -83,12 +84,14 @@ int main(int argc, char* argv[]) {
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = ((struct in_addr*) hptr->h_addr_list[0])->s_addr;
     saddr.sin_port = htons(PORT);
-
+    
+    // Connecting to bus
     if (connect(socket_fd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) {
         perror("Connect error");
         exit(-1);
     }
 
+    // Running the program
     VM vm;
     initVM(&vm);
     if (argc == 2) {

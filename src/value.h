@@ -1,6 +1,7 @@
 #ifndef value_h
 #define value_h
 
+// Forward declarations of Object and String structs
 typedef struct Object Object;
 typedef struct String String;
 

@@ -52,7 +52,7 @@ typedef enum {
 
 /**
  * struct Token - Stores a token
- * @a: type -> TokenType (enum)
+ * @a: type -> TokenType
  * @b: start -> const char*
  * @c: length -> int
  * @d: line -> int
@@ -69,9 +69,12 @@ typedef struct {
 
 /**
  * struct Scanner - Scanner that goes through source code
- * @a: start -> const char*
- * @b: current -> const char*
- * @c: line -> int
+ * @a: start -> const char* : stores the first read character
+ * @b: current -> const char* : stores the character being read
+ * @c: line -> int : stores current line being read
+ * @d: isInShow -> bool : indicates if a show keyword was recently read
+ * @e: isNextIdentifier -> bool : indicates if the next token will 
+ * have to be an identifier, e.g. anything after label keyword
  *
  * Keeps track of the first character address in current
  * iteration and also of the current character being read.
@@ -102,6 +105,13 @@ void initScanner(const char* source);
  */
 Token scanToken();
 
+/**
+ * @brief Reads the source file to identify function names by checking
+ * if they stand next to the call keyword
+ * 
+ * @param functionNames 
+ * @param source 
+ */
 void getFunctionNames(NameList* functionNames, const char* source);
 
 #endif

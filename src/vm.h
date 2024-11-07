@@ -12,9 +12,10 @@
 
 /**
  * struct CallFrame - Used to manage function Calls
- * @a: function -> FunctionObject* : 
- * @b: ip -> uint8_t* :
- * @c: locals -> Table :
+ * @a: function -> FunctionObject* : stores function data
+ * @b: ip -> uint8_t* : stores a pointer to the first instruction
+ * inside the function
+ * @c: locals -> Table : stores all local variables of the function
  */
 typedef struct {
     FunctionObject* function;
@@ -29,9 +30,8 @@ typedef struct {
  * @b: frameCount -> int : stores the number of frames
  * @c: stack -> Value[] : contains all constants (number or object)
  * @d: stackTop -> Value* : keeps track of the top of stack
- * @e: globals -> Table : stores all global values (Variable names)
- * @f: strings -> Table : stores all strings
- * @g: objects -> Object* : Array of objects
+ * @e: strings -> Table : stores all strings
+ * @f: objects -> Object* : Array of objects
  */
 struct VM {
     CallFrame frames[FRAMES_CAPACITY];

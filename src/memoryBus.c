@@ -78,6 +78,12 @@ int setGlobal(Memory* memory, String* key, int firstAddress) {
     return memory->count - 1;
 }
 
+/**
+ * @brief Handles all requests coming in from a core
+ * 
+ * @param arg 
+ * @return void* 
+ */
 void* handleCore(void* arg) {
     CoreData* core = (CoreData*)arg;
     char buffer[1024];
@@ -230,6 +236,8 @@ void* handleCore(void* arg) {
 
 int main() {
     initBus();
+    
+    // Setting up the socket to listen for cores
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         perror("Socket error");

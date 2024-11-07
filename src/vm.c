@@ -12,10 +12,6 @@
 #include "memmng.h"
 #include "vm.h"
 
-// Initial version is a global variable
-// To use multiple instances we will have to handle a VM* pointer instead
-// VM vm;
-
 static void initStack(VM* vm) {
     vm->stackTop = vm->stack;
 }
@@ -41,18 +37,10 @@ static void runtimeError(VM* vm, const char* format, ...) {
 }
 
 void initVM(VM* vm) {
-    // printf("initVM\n");
     initStack(vm);
-    // printf("after initStack\n");
     vm->objects = NULL;
     vm->frameCount = 0;
-
-    // vm->id = id;
-    // vm->canAccessMemory = true;
-
-    // printf("initTable\n");
     initTable(&vm->strings);
-    // printf("End of initVM\n");
 }
 
 void freeVM(VM* vm) {
@@ -93,6 +81,16 @@ static bool callValue(VM* vm, Value callee) {
     return false;
 }
 
+/**
+ * @brief Given the name of a variable, sends a message to the bus
+ * to retrieve its address. The address will be stored in address
+ * parametre. If name cannot be sent to bus, address will be set to -3.
+ * If variable not found, the address will be set to -1.
+ * 
+ * @param socket_fd 
+ * @param name 
+ * @param address 
+ */
 static void getAddress(int socket_fd, Value name, int* address) {
     String* key = (String*)name.as.obj;
     char buffer[1024] = "rad ";
@@ -126,6 +124,15 @@ static void getAddress(int socket_fd, Value name, int* address) {
     }
 }
 
+/**
+ * @brief Sends message to the bus to retrieve the value stored
+ * in the given address. The retrieved value will be stored in
+ * value.
+ * 
+ * @param socket_fd 
+ * @param address 
+ * @param value 
+ */
 static void getValue(int socket_fd, int address, Value* value) {
     char buffer[1024] = "rvl ";
     char num[256];
@@ -150,7 +157,16 @@ static void getValue(int socket_fd, int address, Value* value) {
     *value = (Value){NUM_VALUE, {.number = val}};
 }
 
-// The data array will be assumed to contain 3 elements
+/**
+ * @brief Sends message to the bus to get the alternative address and
+ * boundaries of the variable stored in the given address. Stores the
+ * informations provided by the bus in the array data. The data array 
+ * will be assumed to contain 3 elements.
+ * 
+ * @param socket_fd 
+ * @param address 
+ * @param data 
+ */
 static void getAddressData(int socket_fd, int address, int* data) {
     char buffer[1024] = "rda ";
     char num[256];
@@ -191,6 +207,14 @@ static void getAddressData(int socket_fd, int address, int* data) {
     }
 }
 
+/**
+ * @brief Sends message to the bus to write the given Value in the given
+ * address
+ * 
+ * @param socket_fd 
+ * @param value 
+ * @param address 
+ */
 static void setValue(int socket_fd, Value value, int address) {
     char buffer[1024] = "wrv ";
     int i = 4, j = 0;

@@ -322,6 +322,12 @@ static void declaration(VM* vm) {
     }
 }
 
+/**
+ * @brief Sends a message to the bus to write the read names to
+ * a chunk of memory.
+ * 
+ * @param socket_fd 
+ */
 static void writeName(int socket_fd) {
     char buffer[1024] = "add ";
     int j = 4;
