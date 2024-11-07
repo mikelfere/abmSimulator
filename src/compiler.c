@@ -7,9 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// #include<unistd.h>
-// #include<windows.h>
-
 #include "compiler.h"
 #include "memoryBus.h"
 #include "scanner.h"
@@ -339,12 +336,7 @@ static void writeName(int socket_fd) {
     if (write(socket_fd, buffer, 1024) <= 0) {
         perror("Could not write to bus");
         exit(-1);
-    } 
-	// 		/* get confirmation echoed from server and print */
-	// 		char buffer[BuffSize + 1];
-	// 		memset(buffer, '\0', sizeof(buffer));
-	// 		if (read(sockfd, buffer, sizeof(buffer)) > 0)
-	// 			puts(buffer);
+    }
 }
 
 FunctionObject* compile(int socket_fd, VM* vm, const char* source) {
@@ -357,14 +349,12 @@ FunctionObject* compile(int socket_fd, VM* vm, const char* source) {
     advanceParser();
     if (matchToken(TOKEN_DATA)) {
         while (!matchToken(TOKEN_TEXT)) {
-            // change to add all names per int before sending to bus
             while (matchToken(TOKEN_INT)) {
                 writeName(socket_fd);
             }
         }
     }
     while (!matchToken(TOKEN_EOF)) {
-        // printf("In text segment\n");
         declaration(vm);
     }
     

@@ -46,7 +46,6 @@ static char* readFile(const char* filePath) {
 }
 
 static void runFile(int socket_fd, VM* vm, const char* filePath) {
-    // printf("in runFile\n");
     char* source = readFile(filePath);
     getFunctionNames(&functionNames, source);
     InterpretResult result = interpret(socket_fd, vm, source);
@@ -61,7 +60,6 @@ static void runFile(int socket_fd, VM* vm, const char* filePath) {
 }
 
 int main(int argc, char* argv[]) {
-    // printf("in main\n");
     initNameList(&functionNames);
 
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -91,27 +89,14 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    printf("Connected to bus...\n");
-
-    // to write to bus use this format: 
-    // if (write(sockfd, books[i], strlen(books[i])) > 0) {
-	// 		/* get confirmation echoed from server and print */
-	// 		char buffer[BuffSize + 1];
-	// 		memset(buffer, '\0', sizeof(buffer));
-	// 		if (read(sockfd, buffer, sizeof(buffer)) > 0)
-	// 			puts(buffer);
-
     VM vm;
     initVM(&vm);
-    // printf("after initVM\n");
     if (argc == 2) {
         runFile(socket_fd, &vm, argv[1]);
     } else {
         printf("Usage: abm [path]\n");
     }
     freeVM(&vm);
-
-    printf("Core finished executing...\n");
     close(socket_fd);
     return 0;
 }

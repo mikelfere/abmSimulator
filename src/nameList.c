@@ -41,10 +41,3 @@ void removeName(NameList* list, const char* name, int length) {
         list->names[index][0] = '\0';
     }
 }
-
-// void printNames(NameList* list) {
-//     for (int i = 0; i < list->count; i++) {
-//         printf("%s\n", list->names[i]);
-//     }
-//     // printf("%d\n",list->returnCount);
-// }

@@ -60,5 +60,5 @@ bool isInNameList(NameList* list, const char* name, int length);
  * @return int 
  */
 int getNameIndex(NameList* list, const char* name, int length);
-// void printNames(NameList* list);
+
 #endif
