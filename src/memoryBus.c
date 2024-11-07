@@ -11,11 +11,6 @@
 #include "memoryBus.h"
 #include "socket.h"
 
-typedef struct {
-    int socket;
-    int coreID;
-} CoreData;
-
 Bus bus;
 Memory memory;
 
@@ -23,10 +18,12 @@ pthread_mutex_t lock;
 
 void initBus() {
     bus.memory = &memory;
+    bus.cores = reallocate(NULL, 0, 2 * sizeof(CoreData));
     initMemory(bus.memory);
 }
 
 void freeBus() {
+    reallocate(bus.cores, 2 * sizeof(CoreData), 0);
     freeMemory(bus.memory);
 }
 
@@ -52,64 +49,68 @@ void freeMemory(Memory* memory) {
     reallocate(memory->lowerBounds, sizeof(int) * memory->capacity, 0);
 }
 
-int setGlobal(Memory* memory, String* key) {
-    // printf("Setting globals\n");
+int setGlobal(Memory* memory, String* key, int firstAddress) {
     int address = memory->count;
-    bool isNew = tableSetAddress(&memory->globals, key, &address);
-    // printf("After set address\n");
+    tableSetAddress(&memory->globals, key, &address);
     // Reallocate arrays to match size of globals
     if (memory->globals.capacity != memory->capacity) {
-        memory->altAddresses = (int*)reallocate(memory->altAddresses, sizeof(int) * memory->capacity, sizeof(int) * memory->globals.capacity);
-        memory->upperBounds = (int*)reallocate(memory->upperBounds, sizeof(int) * memory->capacity, sizeof(int) * memory->globals.capacity);
-        memory->lowerBounds = (int*)reallocate(memory->lowerBounds, sizeof(int) * memory->capacity, sizeof(int) * memory->globals.capacity);
-        memory->values = (Value*)reallocate(memory->values, sizeof(Value) * memory->capacity, sizeof(Value) * memory->globals.capacity);
+        memory->altAddresses = (int*)reallocate(memory->altAddresses, sizeof(int) * \
+            memory->capacity, sizeof(int) * memory->globals.capacity);
+        memory->upperBounds = (int*)reallocate(memory->upperBounds, sizeof(int) * \
+            memory->capacity, sizeof(int) * memory->globals.capacity);
+        memory->lowerBounds = (int*)reallocate(memory->lowerBounds, sizeof(int) * \
+            memory->capacity, sizeof(int) * memory->globals.capacity);
+        memory->values = (Value*)reallocate(memory->values, sizeof(Value) * \
+            memory->capacity, sizeof(Value) * memory->globals.capacity);
         memory->capacity = memory->globals.capacity;
     }
-    printf("memory->count = %d --- address = %d ---- memory->capacity = %d\n", memory->count, address, memory->capacity);
     // If is not new entry set address to altAddresses array.
-    if (!isNew) {
-        // puts("altAddress for existing");
+    if (firstAddress != -1) {
         memory->altAddresses[address] = memory->count;
         memory->altAddresses[memory->count] = address;
     } else {
-        // puts("altAddress for new");
         memory->altAddresses[address] = -1;
-        
     }
-    // printf("Set altAddress\n");
+    // printf("memory->count = %d --- address = %d ---- alt 
+    //address = %d\n", memory->count, address, bus.memory->altAddresses[address]);
     memory->values[memory->count] = (Value){NUM_VALUE, {.number = 0}};
     memory->count++;
-    // printf("Set globals\n");
     return memory->count - 1;
 }
 
 void* handleCore(void* arg) {
     CoreData* core = (CoreData*)arg;
     char buffer[1024];
-    int valread, i, j, dataCount, lastAddress;
-    char name[256] = {0};
-    String* key;
+    int valread, i, j, dataCount, lastAddress, address, prevAddress = -1;
+    char name[256] = {0}, prevName[256] = {0};
+    String *key, *prevKey;
     Value value;
 
-    printf("Handling core %d\n", core->coreID);
+    // printf("Handling core %d\n", core->coreID);
 
     while ((valread = read(core->socket, buffer, 1024)) > 0) {
-        printf("Core %d sent: %s\n", core->coreID, buffer);
+        // printf("Core %d sent: %s\n", core->coreID, buffer);
         i = 0, j = 0, dataCount = 0;
-        // If adding to memory:
         if (memcmp(buffer, "add", 3) == 0) {
-            // printf("In add\n");
-            // Reminder for potential mutex use----------------------------------------------------
             i = 4;
             while (buffer[i] != '\0') {
                 if (buffer[i] == ' ') {
-                    // printf("Before copy key\n");
-                    // puts(name);
                     key = copyString(&bus.memory->strings, bus.memory->objects, name, j);
-                    // printf("Before setGlobal\n");
-                    lastAddress = setGlobal(bus.memory, key);
+                    address = tableGetValue(&bus.memory->globals, key, &value);
+                    if (address == -1) {    // New entry
+                        if (prevAddress != -1 && prevAddress != memory.count - 1) {
+                            setGlobal(bus.memory, prevKey, prevAddress);
+                            dataCount++;
+                            // So that we don't keep adding the key before on each iteration
+                            prevAddress = -1;   
+                        }
+                        lastAddress = setGlobal(bus.memory, key, -1);
+                        dataCount++;
+                    } else {                // Entry already defined
+                        prevKey = key;
+                        prevAddress = address;
+                    }
                     j = 0;
-                    dataCount++;
                 } else {
                     name[j++] = buffer[i];
                 }
@@ -120,39 +121,28 @@ void* handleCore(void* arg) {
                 bus.memory->upperBounds[i] = lastAddress;
                 bus.memory->lowerBounds[i] = lastAddress - (dataCount - 1);
             }
-            // printf("After add\n");
-            // Reminder for potential mutex use----------------------------------------------------
         } else if (memcmp(buffer, "rad", 3) == 0) {
-            // printf("In read address\n");
             i = 4, j = 0;
-            printf("%d\n", buffer[i] != '\0');
             while (buffer[i] != '\0') {
                 name[j] = buffer[i];
                 i++;
                 j++;
             }
             name[j] = '\0';
-            puts(name);
-            printf("%d\n",j);
-            // printf("After while\n");
             key = copyString(&bus.memory->strings, bus.memory->objects, name, j);
-            // printf("Copied String");
             int address = tableGetValue(&bus.memory->globals, key, &value);
-            printf("address = %d\n", address);
+            // printf("%s address = %d\n", name, address);
             if (address == -1) {
                 write(core->socket, "nfd", 4);
             } else {
-                // printf("Sending\n");
                 char num[1024];
                 memset(num, '\0', sizeof(num));
                 sprintf(num, "%d", address);
                 if (write(core->socket, num, 1024) <= 0) {
                     perror("Could not write to core");
                     exit(-1);
-                } 
-                // printf("Written\n");
+                }
             }
-            // printf("After read address\n");
         } else if (memcmp(buffer, "rda", 3) == 0) {
             i = 4;
             char caddress[256];
@@ -183,6 +173,7 @@ void* handleCore(void* arg) {
                     buffer[j++] = ' ';
                 }
                 buffer[j] = '\0';
+                puts(buffer);
                 if (write(core->socket, buffer, 1024) <= 0) {
                     perror("Could not write to core");
                     exit(-1);
@@ -207,6 +198,7 @@ void* handleCore(void* arg) {
             i = 4;
             char caddress[256], cval[256];
             memset(caddress, '\0', sizeof(caddress));
+            memset(cval, '\0', sizeof(cval));
             bool afterAddress = false;
             while (buffer[i] != '\0') {
                 if (buffer[i] == ' ') {
@@ -231,10 +223,9 @@ void* handleCore(void* arg) {
             perror("Didn't receive a valid command");
             exit(-1);
         }
-        // write(core->socket, buffer, valread);
     }
     close(core->socket);
-    free(core);
+    // free(core);
     return NULL;
 }
 
@@ -263,10 +254,9 @@ int main() {
         exit(-1);
     }
 
-    printf("Listening on port %d for cores...\n", PORT);
+    // printf("Listening on port %d for cores...\n", PORT);
     int coreId = 0;
     // pthread_mutex_init(&lock, NULL);
-
     while (true) {
         struct sockaddr_in caddr;
         int len = sizeof(caddr);
@@ -277,12 +267,15 @@ int main() {
             exit(-1);
         }
 
-        CoreData* core = malloc(sizeof(CoreData));
-        core->socket = core_fd;
-        core->coreID = ++coreId;
+        // CoreData* core = malloc(sizeof(CoreData));
+        // core->socket = core_fd;
+        // core->coreID = ++coreId;
+        bus.cores[coreId % 2].socket = core_fd;
+        bus.cores[coreId % 2].coreID = coreId % 2 + 1;
 
         pthread_t threadId;
-        pthread_create(&threadId, NULL, handleCore, core);
+        pthread_create(&threadId, NULL, handleCore, &bus.cores[(coreId++) % 2]);
+        // pthread_create(&threadId, NULL, handleCore, core);
         pthread_detach(threadId);
     }
     freeBus();

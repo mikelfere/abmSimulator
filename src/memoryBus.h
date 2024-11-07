@@ -18,7 +18,13 @@ typedef struct {
 } Memory;
 
 typedef struct {
+    int socket;
+    int coreID;
+} CoreData;
+
+typedef struct {
     Memory* memory;
+    CoreData* cores;
 } Bus;
 
 // extern Memory memory;
@@ -27,6 +33,6 @@ void initBus();
 void freeBus();
 void initMemory(Memory* memory);
 void freeMemory(Memory* memory);
-int setGlobal(Memory* memory, String* key);
+int setGlobal(Memory* memory, String* key, int firstAddress);
 
 #endif
