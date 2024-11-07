@@ -21,7 +21,7 @@ void freeTable(Table* table) {
 }
 
 static Entry* findEntry(Entry* entries, int capacity, String* key) {
-    uint32_t index = key->hash % capacity;
+    uint32_t index = key->hash & (capacity - 1);
     for (;;) {
         Entry* entry = &entries[index];
         if (entry->key  == key || entry->key == NULL) {
