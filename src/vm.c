@@ -208,7 +208,6 @@ static void setValue(int socket_fd, Value value, int address) {
         buffer[i++] = num[j++]; 
     }
     buffer[i] = '\0';
-    puts(buffer);
     if (write(socket_fd, buffer, 1024) <= 0) {
         perror("Could not write to bus");
         exit(-1);
