@@ -1,6 +1,8 @@
 #ifndef memoryBus_h
 #define memoryBus_h
 
+#include <pthread.h>
+
 #include "memmng.h"
 #include "symbolTable.h"
 #include "vm.h"
@@ -23,6 +25,7 @@ typedef struct {
     int* altAddresses;
     int* upperBounds;
     int* lowerBounds;
+    State** state;
     Value* values;
     Table globals;
     Table strings;
@@ -33,11 +36,12 @@ typedef struct {
  * struct CoreData - Stores the socket and core ID of each core connected to the bus
  * @a: socket -> int : stores the socket used by the core
  * @b: coreID -> int : stores the ID of the core, can be 1 or 2 only
- * 
  */
 typedef struct {
     int socket;
+    int snoopSocket;
     int coreID;
+    bool inUse;
 } CoreData;
 
 /**
@@ -48,6 +52,7 @@ typedef struct {
 typedef struct {
     Memory* memory;
     CoreData* cores;
+    pthread_mutex_t lock;
 } Bus;
 
 /**
