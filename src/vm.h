@@ -2,8 +2,10 @@
 #define vm_h
 
 #include <stddef.h>
+#include <pthread.h>
 
-#include "object.h"
+#include "cache.h"
+// #include "object.h"
 #include "sequence.h"
 #include "symbolTable.h"
 
@@ -32,6 +34,8 @@ typedef struct {
  * @d: stackTop -> Value* : keeps track of the top of stack
  * @e: strings -> Table : stores all strings
  * @f: objects -> Object* : Array of objects
+ * @g: cache -> Cache : struct that contains all cache data
+ * @h: clock -> int : clock that is used by replacement algorithm
  */
 struct VM {
     CallFrame frames[FRAMES_CAPACITY];
@@ -40,6 +44,8 @@ struct VM {
     Value* stackTop;
     Table strings;
     Object* objects;
+    Cache cache;
+    int clock;
 };
 
 typedef enum {
