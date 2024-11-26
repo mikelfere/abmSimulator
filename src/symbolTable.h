@@ -1,12 +1,17 @@
 #ifndef symbolTable_h
 #define symbolTable_h
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "value.h"
 
 /**
  * struct Entry - Represents a hash table entry
  * @a: key -> String* : "index" of entry (has to be unique)
  * @b: value -> Value : stores the actual value corresponding to the "index"
+ * @c: address -> int : stores the address if entry is global or if it references
+ * a global variable
  */
 typedef struct {
     String* key;
@@ -55,6 +60,16 @@ void freeTable(Table* table);
 int tableGetValue(Table* table, String* key, Value* value);
 
 /**
+ * @brief Iterates through the array of entries in table and if matches
+ * address to an entry's address, returns its key, else returns NULL
+ * 
+ * @param table 
+ * @param address 
+ * @return String* 
+ */
+String* tableGetKey(Table* table, int address);
+
+/**
  * @brief Checks if table contains more entries than 75% of its capacity.
  * Reallocates a new table with double the capacity if true. If the given 
  * key isn't found in the table, create new entry and assign given value.
@@ -72,7 +87,8 @@ bool tableSetValue(Table* table, String* key, Value value);
  * @brief Checks if table contains more entries than 75% of its capacity.
  * Reallocates a new table with double the capacity if true. If the given 
  * key isn't found in the table, create new entry and assign given value.
- * Set address of entry to given address. Update count as necessary.
+ * Set address of entry to given address. If Entry exists, set address to 
+ * found address. Update count as necessary. Returns true if set Entry is new.
  * 
  * @param table 
  * @param key 
@@ -83,8 +99,31 @@ bool tableSetValue(Table* table, String* key, Value value);
  */
 bool tableSetValueAddress(Table* table, String* key, Value value, int* address);
 
+/**
+ * @brief hecks if table contains more entries than 75% of its capacity.
+ * Reallocates a new table with double the capacity if true. If the given 
+ * key isn't found in the table, create new entry and assign given address.
+ * If Entry exists, set address to found address. Update count as necessary. 
+ * Returns true if set Entry is new.
+ * 
+ * @param table 
+ * @param key 
+ * @param address 
+ * @return true 
+ * @return false 
+ */
 bool tableSetAddress(Table* table, String* key, int* address);
 
+/**
+ * @brief Search for an entry with the given key. If found change its address
+ * to the given address. Returns true if address was changed.
+ * 
+ * @param table 
+ * @param key 
+ * @param address 
+ * @return true 
+ * @return false 
+ */
 bool tableChangeAddress(Table* table, String* key, int address);
 
 /**
@@ -92,11 +131,11 @@ bool tableChangeAddress(Table* table, String* key, int address);
  * string. If found, returns the String object, else returns NULL
  * 
  * @param table 
- * @param characaters 
+ * @param characters 
  * @param length 
  * @param hash 
  * @return String* 
  */
-String* findString(Table* table, const char* characaters, int length, uint32_t hash);
+String* findString(Table* table, const char* characters, int length, uint32_t hash);
 
 #endif

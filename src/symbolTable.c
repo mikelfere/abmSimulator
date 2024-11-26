@@ -51,6 +51,22 @@ int tableGetValue(Table* table, String* key, Value* value) {
     return -2;
 }
 
+String* tableGetKey(Table* table, int address) {
+    // puts("In tableGetKey");
+    if (address == -1) {
+        return NULL;
+    }   
+    for (int i = 0; i < table->capacity; i++) {
+        // printf("%d", i);
+        if (table->entries[i].address == address) {
+            // puts("Key found");
+            return table->entries[i].key;
+        }
+    }
+    // puts("Key not found");
+    return NULL;
+}
+
 static void adjustCapacity(Table* table, int capacity) {
     Entry* entries = (Entry*)reallocate(NULL, 0, sizeof(Entry) * capacity);
     for (int i = 0; i < capacity; i++) {
@@ -154,7 +170,7 @@ String* findString(Table* table, const char* characters, int length, \
             return NULL;
         } else if (entry->key->length == length && 
                     entry->key->hash == hash && 
-                    memcmp(entry->key->characaters, characters, length) == 0) {
+                    memcmp(entry->key->characters, characters, length) == 0) {
             return entry->key;
         }
         index = (index + 1) % table->capacity;
