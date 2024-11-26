@@ -23,7 +23,7 @@ static void freeObject(Object* obj) {
             break;
         case STRING_OBJECT:
             String* string = (String*)obj;
-            reallocate(string->characaters, sizeof(char) * (string->length + 1), 0);
+            reallocate(string->characters, sizeof(char) * (string->length + 1), 0);
             reallocate(obj, sizeof(String), 0);
             break;
     }

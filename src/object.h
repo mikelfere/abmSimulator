@@ -40,7 +40,7 @@ typedef struct Object {
 typedef struct String {
     Object obj;
     int length;
-    char* characaters;
+    char* characters;
     uint32_t hash;
 } String;
 

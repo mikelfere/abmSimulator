@@ -16,7 +16,7 @@ static Object* allocateObject(Object* objects, size_t size, ObjectType type) {
 
 static String* allocateString(Table* table, Object* objects, char* characters, int length, uint32_t hash) {
     String* string = (String*)allocateObject(objects, sizeof(String), STRING_OBJECT);
-    string->characaters = characters;
+    string->characters = characters;
     string->length = length;
     string->hash = hash;
     tableSetValue(table, string, (Value){NUM_VALUE, {.number = 0}});
